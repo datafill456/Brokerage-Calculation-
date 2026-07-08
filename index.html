@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MVS Brokerage Model</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{--navy:#1F3864;--navy2:#2c4a7c;--gold:#C9A227;--gold-soft:#f3e9c9;--ink:#1a1f2b;
+    --grey:#5b6472;--line:#dfe3ea;--band:#f6f8fb;--input:#FFF9E6;--ok:#0a7d54;--bg:#eef1f6;--focus:#fff3bf;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+  header{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;padding:16px 24px;border-bottom:4px solid var(--gold)}
+  header h1{margin:0;font-size:20px}
+  header p{margin:3px 0 0;font-size:12px;color:#cfd8ea}
+  .tabs{display:flex;gap:2px;padding:0 24px;background:var(--navy)}
+  .tab{padding:9px 22px;background:#33507e;color:#dfe6f2;border:none;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;cursor:pointer;margin-top:6px}
+  .tab.active{background:var(--bg);color:var(--navy)}
+  .wrap{max-width:1200px;margin:20px auto;padding:0 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:20px;overflow:hidden}
+  .card h2{margin:0;padding:11px 18px;font-size:15px;color:var(--navy);border-bottom:2px solid var(--gold);background:#fbfcfe;display:flex;justify-content:space-between;align-items:center}
+  .card .body{padding:14px 18px}
+  .controls{display:flex;gap:22px;flex-wrap:wrap;align-items:center}
+  .ctrl{display:flex;align-items:center;gap:7px}
+  .ctrl label{font-weight:600;color:var(--navy)}
+  .ctrl input{width:84px;padding:6px;border:1px solid var(--gold);background:var(--input);border-radius:6px;text-align:right}
+  button{cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:#fff;padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:600}
+  button.ghost{background:#fff;color:var(--navy)}
+  button.sm{padding:4px 10px;font-size:11.5px}
+  button:hover{opacity:.9}
+  .hint{font-size:11.5px;color:var(--grey);margin:2px 0 10px;font-style:italic}
+  .grid-wrap{overflow:auto}
+  table.grid{border-collapse:collapse;font-size:12.5px}
+  table.grid th{background:var(--navy);color:#fff;padding:6px 8px;border:1px solid #16294a;font-weight:600;position:sticky;top:0;z-index:1}
+  table.grid td{border:1px solid var(--line);padding:0}
+  table.grid td.rownum{background:var(--band);color:var(--grey);text-align:center;padding:0 6px;font-size:11px;min-width:26px}
+  table.grid input{border:none;background:transparent;padding:5px 7px;font-size:12.5px;width:100%;outline:none}
+  table.grid input.num{text-align:right}
+  table.grid input:focus{background:var(--focus);box-shadow:inset 0 0 0 2px var(--gold)}
+  table.grid td.editable{background:var(--input)}
+  table.res{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.res th,table.res td{padding:6px 8px;border:1px solid var(--line);text-align:right;white-space:nowrap}
+  table.res th{background:var(--navy);color:#fff;text-align:center}
+  table.res td.name{text-align:left}
+  table.res tr:nth-child(even) td{background:var(--band)}
+  table.res tr.total td{background:var(--gold-soft);font-weight:700;border-top:2px solid var(--gold)}
+  .blank{color:#b7bdc7;font-style:italic}
+  .kpis{display:flex;gap:12px;flex-wrap:wrap}
+  .kpi{flex:1;min-width:150px;background:#fbfcfe;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:9px 12px}
+  .kpi .lab{font-size:10.5px;color:var(--grey);text-transform:uppercase;letter-spacing:.4px}
+  .kpi .val{font-size:18px;font-weight:700;color:var(--navy)}
+  .kpi .sub{font-size:11px;color:var(--grey)}
+  .chart-grid{display:flex;gap:16px;flex-wrap:wrap}
+  .chart-box{flex:1;min-width:320px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px}
+  .chart-box h3{margin:2px 0 8px;font-size:12.5px;color:var(--navy);text-align:center}
+  .note{font-size:11.5px;color:var(--grey);font-style:italic;margin-top:8px}
+  .hide{display:none}
+  @media(max-width:640px){.chart-box{min-width:100%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>MVS Money Brokers — Brokerage Model</h1>
+  <p>Two sheets, like the workbook: enter data on INPUT, read results on OUTPUT.</p>
+</header>
+<div class="tabs">
+  <button class="tab active" id="tabInput" onclick="showPage('input')">■ INPUT</button>
+  <button class="tab" id="tabOutput" onclick="showPage('output')">■ OUTPUT</button>
+</div>
+
+<div class="wrap" id="pageInput">
+  <div class="card">
+    <h2>Controls</h2>
+    <div class="body controls">
+      <div class="ctrl"><label>FX market share</label><input id="shFX" type="text" value="17.43%"></div>
+      <div class="ctrl"><label>T-Bond market share</label><input id="shTBN" type="text" value="19.49%"></div>
+      <button class="ghost sm" id="btnReset">Reset to June 2026</button>
+      <label class="sm" id="pdfBtn" style="display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#3a2f05;border:1px solid #a8861f;padding:6px 13px;border-radius:6px;font-weight:700;cursor:pointer;font-size:12.5px">⇪ Import PDF report<input type="file" id="pdfFile" accept="application/pdf" style="display:none"></label>
+      <button class="sm" onclick="showPage('output')">View OUTPUT &rarr;</button>
+      <span id="pdfMsg" class="hint" style="margin:0"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Foreign Exchange — data entry <span><button class="ghost sm" onclick="addRow('fx')">+ Add row</button></span></h2>
+    <div class="body">
+      <div class="hint">Paste straight from Excel (select a block, Ctrl+V into any cell). Enter = next row down (adds a row at the bottom). Arrow keys move between cells. Leave Amount blank for N/A.</div>
+      <div class="grid-wrap"><table class="grid" id="gridFX"></table></div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Treasury Bonds — data entry <span><button class="ghost sm" onclick="addRow('tbn')">+ Add row</button></span></h2>
+    <div class="body">
+      <div class="hint">Same as above — paste, Enter to go down, arrows to navigate.</div>
+      <div class="grid-wrap"><table class="grid" id="gridTBN"></table></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap hide" id="pageOutput">
+  <div class="card">
+    <h2>Summary <span><button class="ghost sm" id="btnCSV">Export CSV</button></span></h2>
+    <div class="body">
+      <div class="kpis" id="kpis"></div>
+      <div class="chart-grid" style="margin-top:14px">
+        <div class="chart-box"><h3>MVS vs other brokers — by segment (full market)</h3><canvas id="cSeg" height="150"></canvas></div>
+        <div class="chart-box"><h3>MVS share: reverse-slab vs report</h3><canvas id="cShare" height="150"></canvas></div>
+      </div>
+      <div class="note">Full market uses reported share (every bank). Reverse-slab reaches only discount banks; the gap between them is the no-discount banks' business.</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Foreign Exchange — per bank</h2>
+    <div class="body">
+      <div class="grid-wrap"><table class="res" id="resFX"></table></div>
+      <div class="chart-grid" style="margin-top:14px">
+        <div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) with MVS share (line) — per bank</h3><canvas id="cFXcombo" height="150"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Treasury Bonds — per bank</h2>
+    <div class="body">
+      <div class="grid-wrap"><table class="res" id="resTBN"></table></div>
+      <div class="chart-grid" style="margin-top:14px">
+        <div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) with MVS share (line) — per bank</h3><canvas id="cTBNcombo" height="150"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FX_SLAB=[[0,1e6,0],[1e6,1.5e6,0.125],[1.5e6,2.5e6,0.15],[2.5e6,3.5e6,0.20],[3.5e6,5e6,0.30],[5e6,1e12,0.40]];
+const TBN_SLAB=[[0,1e6,0],[1e6,1.5e6,0.20],[1.5e6,2.5e6,0.15],[2.5e6,3.5e6,0.20],[3.5e6,5e6,0.30],[5e6,1e12,0.40]];
+const SEED_FX=[["AMANA BANK",284743.21,8.22],["BANK OF CEYLON",85603.13,0],["CARGILLS BANK",103654.69,0],
+["CITI BANK",360935.40,9.40],["COMMERCIAL BANK",558321.69,18.40],["DEUTCHE BANK",138283.50,9.33],
+["DFCC BANK",385027.50,6.61],["HABIB BANK",75656.25,0],["HATTON NATIONAL BANK",579975.02,12.97],
+["HSBC",832321.54,12.95],["INDIAN BANK",null,0],["MUSLIM COMMERCIAL BANK",169567.89,0],
+["NATIONAL SAVINGS BANK",131833.13,0],["NATIONS TRUST BANK",580254.26,4.15],["NDB BANK",1593996.21,25.03],
+["PAN ASIA BANK",253233.19,7.76],["PEOPLES BANK",399129.39,5.95],["PUBLIC BANK",null,0],
+["SAMPATH BANK",1225465.23,26.79],["SEYLAN BANK",188136.27,0],["STANDARD CHARTERED BANK",697328.19,8.63],
+["STATE BANK OF INDIA",18914.06,0],["UNION BANK OF COLOMBO",null,0]];
+const SEED_TBN=[["BANK OF CEYLON",10000,0],["CAPITAL ALLIANCE",560000,15.77],["CITI BANK",285000,0],
+["COMMERCIAL BANK",503089.04,9.23],["DFCC BANK",750000,13.74],["FIRST CAPITAL TREASURIES",247500,9.64],
+["HATTON NATIONAL BANK",15000,0],["HNB SECURITIES",291089.04,2.63],["HSBC",657589.04,4.14],
+["NATIONAL SAVINGS BANK",202500,0],["NATIONS TRUST BANK",497500,9.82],["NDB BANK",310000,9.82],
+["NSB FUND MANAGEMENT",112500,0],["PAN ASIA BANK",24520.55,0],["PEOPLES BANK",null,0],
+["SAMPATH BANK",554609.59,4.57],["SEYLAN BANK",null,0],["STANDARD CHARTERED BANK",87000,0],
+["UNION BANK OF COLOMBO",null,0],["WEALTH TRUST SECURITIES",252500,8.57]];
+
+const DATA={fx:[],tbn:[]};
+const shFX=document.getElementById('shFX'),shTBN=document.getElementById('shTBN');
+function load(){let sf=null,st=null,sh=null;
+  try{sf=JSON.parse(localStorage.getItem('mvs2_fx'));st=JSON.parse(localStorage.getItem('mvs2_tbn'));sh=JSON.parse(localStorage.getItem('mvs2_sh'));}catch(e){}
+  DATA.fx=sf||SEED_FX.map(r=>r.slice());DATA.tbn=st||SEED_TBN.map(r=>r.slice());
+  if(sh){shFX.value=sh[0];shTBN.value=sh[1];}}
+function save(){try{localStorage.setItem('mvs2_fx',JSON.stringify(DATA.fx));localStorage.setItem('mvs2_tbn',JSON.stringify(DATA.tbn));localStorage.setItem('mvs2_sh',JSON.stringify([shFX.value,shTBN.value]));}catch(e){}}
+
+const fmt=n=>(n==null||isNaN(n))?'':Math.round(n).toLocaleString('en-US');
+const pct=(n,d=1)=>(n==null||isNaN(n))?'':(n*100).toFixed(d)+'%';
+const parsePct=s=>{const v=parseFloat(String(s).replace('%',''));return isNaN(v)?0:v/100;};
+function parseAmt(v){v=String(v).trim().replace(/,/g,'');if(v===''||/^n\/?a$/i.test(v))return null;const n=Number(v);return isNaN(n)?null:n;}
+function parseDisc(v){v=String(v).trim().replace('%','').replace(/,/g,'');if(v==='')return 0;const n=Number(v);return isNaN(n)?0:n;}
+
+const COLS=[{label:'Market Participant',cls:'',parse:v=>String(v)},{label:'Amount (Rs.)',cls:'num',parse:parseAmt},{label:'Discount %',cls:'num',parse:parseDisc}];
+function cellVal(key,r,c){const v=DATA[key][r][c];if(c===0)return v??'';if(c===1)return v==null?'':v;return v;}
+function gridId(k){return k==='fx'?'gridFX':'gridTBN';}
+function renderGrid(key){
+  let h='<thead><tr><th></th>'+COLS.map(c=>`<th>${c.label}</th>`).join('')+'</tr></thead><tbody>';
+  DATA[key].forEach((row,r)=>{h+=`<tr><td class="rownum">${r+1}</td>`;
+    COLS.forEach((col,c)=>{h+=`<td class="editable"><input class="${col.cls}" id="${key}-${r}-${c}" data-k="${key}" data-r="${r}" data-c="${c}" value="${cellVal(key,r,c)}"></td>`;});
+    h+='</tr>';});
+  h+='</tbody>';
+  document.getElementById(gridId(key)).innerHTML=h;
+  document.querySelectorAll(`#${gridId(key)} input`).forEach(inp=>{inp.addEventListener('change',onEdit);inp.addEventListener('keydown',onKey);inp.addEventListener('paste',onPaste);});
+}
+function onEdit(e){const k=e.target.dataset.k,r=+e.target.dataset.r,c=+e.target.dataset.c;DATA[k][r][c]=COLS[c].parse(e.target.value);save();}
+function focusCell(k,r,c){const el=document.getElementById(`${k}-${r}-${c}`);if(el){el.focus();try{el.select();}catch(_){}}}
+function onKey(e){const k=e.target.dataset.k,r=+e.target.dataset.r,c=+e.target.dataset.c,rows=DATA[k].length;
+  const atStart=e.target.selectionStart===0,atEnd=e.target.selectionStart===e.target.value.length;
+  if(e.key==='Enter'){e.preventDefault();DATA[k][r][c]=COLS[c].parse(e.target.value);if(r+1>=rows)DATA[k].push(['',null,0]);renderGrid(k);focusCell(k,r+1,c);save();}
+  else if(e.key==='ArrowDown'){e.preventDefault();if(r+1<rows)focusCell(k,r+1,c);}
+  else if(e.key==='ArrowUp'){e.preventDefault();if(r-1>=0)focusCell(k,r-1,c);}
+  else if(e.key==='ArrowRight'&&atEnd){if(c+1<COLS.length){e.preventDefault();focusCell(k,r,c+1);}}
+  else if(e.key==='ArrowLeft'&&atStart){if(c-1>=0){e.preventDefault();focusCell(k,r,c-1);}}}
+function onPaste(e){e.preventDefault();const k=e.target.dataset.k,r0=+e.target.dataset.r,c0=+e.target.dataset.c;
+  const text=(e.clipboardData||window.clipboardData).getData('text');
+  const lines=text.replace(/\r/g,'').split('\n');if(lines.length&&lines[lines.length-1]==='')lines.pop();
+  lines.forEach((line,i)=>{const cells=line.split('\t');const rr=r0+i;while(DATA[k].length<=rr)DATA[k].push(['',null,0]);
+    cells.forEach((val,j)=>{const cc=c0+j;if(cc<COLS.length)DATA[k][rr][cc]=COLS[cc].parse(val);});});
+  renderGrid(k);focusCell(k,r0+lines.length-1,c0);save();}
+function addRow(k){DATA[k].push(['',null,0]);renderGrid(k);save();}
+
+function invertF(p,slab){if(!(p>0))return null;let cum=0;
+  for(const[lo,hi,r] of slab){if(r>0&&Math.abs(p-r)>1e-12){const F=(cum-lo*r)/(p-r);if(F>=lo-1&&F<=hi+1)return F;}cum+=(Math.min(hi,1e12)-lo)*r;}return null;}
+function compute(rows,slab){return rows.map(([name,amt,discPct])=>{const p=discPct/100,quant=(typeof amt==='number')&&p>0;
+  let F=null,others=null,share=null,band=null;
+  if(quant){F=invertF(p,slab);const flo=invertF(Math.round((p-0.00005)*1e5)/1e5,slab);const fhi=invertF(Math.round((p+0.00005)*1e5)/1e5,slab);others=F-amt;share=amt/F;band=(fhi!=null&&flo!=null)?(fhi-flo):null;}
+  const given=(typeof amt==='number')?amt*p:null,net=(typeof amt==='number')?amt-amt*p:null;
+  return{name,amt,discPct,given,net,F,others,share,band,quant};});}
+
+function renderRes(elId,comp){const heads=['Market Participant','MVS Brokerage','Disc %','Disc Given','Net Brok.','Total Market (F)','To Other Brokers','MVS Share','± band'];
+  let h='<thead><tr>'+heads.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';let tA=0,tG=0,tN=0,tF=0,tO=0;
+  comp.forEach(c=>{h+=`<tr><td class="name">${c.name||''}</td><td>${fmt(c.amt)}</td><td>${(typeof c.amt==='number')?c.discPct.toFixed(2)+'%':''}</td><td>${fmt(c.given)}</td><td>${fmt(c.net)}</td><td>${c.quant?fmt(c.F):'<span class=blank>—</span>'}</td><td>${c.quant?fmt(c.others):'<span class=blank>—</span>'}</td><td>${c.quant?pct(c.share):'<span class=blank>—</span>'}</td><td>${c.quant?'±'+fmt(c.band):''}</td></tr>`;
+    if(typeof c.amt==='number'){tA+=c.amt;tG+=c.given;tN+=c.net;}if(c.quant){tF+=c.F;tO+=c.others;}});
+  const shareT=tF>0?(tF-tO)/tF:null;
+  h+=`<tr class="total"><td class="name">TOTAL</td><td>${fmt(tA)}</td><td></td><td>${fmt(tG)}</td><td>${fmt(tN)}</td><td>${fmt(tF)}</td><td>${fmt(tO)}</td><td>${pct(shareT)}</td><td></td></tr></tbody>`;
+  document.getElementById(elId).innerHTML=h;return{grossAll:tA,given:tG,net:tN,mktQ:tF,othersQ:tO,shareQ:shareT};}
+
+const NAVY='#1F3864',GOLD='#C9A227';let charts={};
+function bar(id,labels,datasets,horizontal,pctAxis){if(charts[id])charts[id].destroy();
+  const isStack=datasets.length>1;const valFmt=pctAxis?(v=>(v*100).toFixed(0)+'%'):(v=>Number(v).toLocaleString());
+  const valTicks={font:{size:10},callback:valFmt},catTicks={font:{size:10}};
+  charts[id]=new Chart(document.getElementById(id),{type:'bar',data:{labels,datasets},options:{indexAxis:horizontal?'y':'x',responsive:true,maintainAspectRatio:true,
+    plugins:{legend:{display:isStack,position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{x:{stacked:isStack&&horizontal,ticks:horizontal?valTicks:catTicks},y:{stacked:isStack&&horizontal,ticks:horizontal?catTicks:valTicks}}}});}
+function combo(id,labels,mvs,others,share){if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(document.getElementById(id),{data:{labels,datasets:[
+    {type:'bar',label:'MVS',data:mvs,backgroundColor:GOLD,stack:'s',yAxisID:'y'},
+    {type:'bar',label:'Other brokers',data:others,backgroundColor:NAVY,stack:'s',yAxisID:'y'},
+    {type:'line',label:'MVS share',data:share,borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,pointBackgroundColor:'#C0392B',yAxisID:'y2',tension:.25}
+  ]},options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+    scales:{
+      y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
+      y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+      x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}
+    }}});}
+function draw(cFX,cTBN,tFX,tTBN,sFX,sTBN){const qFX=cFX.filter(c=>c.quant),qT=cTBN.filter(c=>c.quant);
+  combo('cFXcombo',qFX.map(c=>c.name),qFX.map(c=>c.amt),qFX.map(c=>c.others),qFX.map(c=>c.share));
+  combo('cTBNcombo',qT.map(c=>c.name),qT.map(c=>c.amt),qT.map(c=>c.others),qT.map(c=>c.share));
+  const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
+  bar('cSeg',['Foreign Exchange','Treasury Bonds'],[{label:'MVS',data:[tFX.grossAll,tTBN.grossAll],backgroundColor:GOLD,stack:'s'},{label:'Other brokers',data:[fullFX-tFX.grossAll,fullT-tTBN.grossAll],backgroundColor:NAVY,stack:'s'}],true,false);
+  bar('cShare',['Foreign Exchange','Treasury Bonds'],[{label:'Reverse-slab',data:[tFX.shareQ,tTBN.shareQ],backgroundColor:NAVY},{label:'Report',data:[sFX,sTBN],backgroundColor:GOLD}],false,true);}
+function kpis(tFX,tTBN,sFX,sTBN){const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
+  const c=[['FX full market',fmt(fullFX),'to others '+fmt(fullFX-tFX.grossAll)],['FX MVS share (report)',(sFX*100).toFixed(2)+'%','reverse-slab '+pct(tFX.shareQ,2)],
+    ['T-Bond full market',fmt(fullT),'to others '+fmt(fullT-tTBN.grossAll)],['T-Bond MVS share (report)',(sTBN*100).toFixed(2)+'%','reverse-slab '+pct(tTBN.shareQ,2)],
+    ['Combined MVS brokerage',fmt(tFX.grossAll+tTBN.grossAll),'discount given '+fmt(tFX.given+tTBN.given)],['Combined full market',fmt(fullFX+fullT),'to others '+fmt(fullFX+fullT-tFX.grossAll-tTBN.grossAll)]];
+  document.getElementById('kpis').innerHTML=c.map(x=>`<div class="kpi"><div class="lab">${x[0]}</div><div class="val">${x[1]}</div><div class="sub">${x[2]}</div></div>`).join('');}
+
+function buildOutput(){const sFX=parsePct(shFX.value),sTBN=parsePct(shTBN.value);
+  const cFX=compute(DATA.fx,FX_SLAB),cTBN=compute(DATA.tbn,TBN_SLAB);
+  const tFX=renderRes('resFX',cFX),tTBN=renderRes('resTBN',cTBN);kpis(tFX,tTBN,sFX,sTBN);draw(cFX,cTBN,tFX,tTBN,sFX,sTBN);save();}
+function showPage(p){const inp=p==='input';
+  document.getElementById('pageInput').classList.toggle('hide',!inp);
+  document.getElementById('pageOutput').classList.toggle('hide',inp);
+  document.getElementById('tabInput').classList.toggle('active',inp);
+  document.getElementById('tabOutput').classList.toggle('active',!inp);
+  if(!inp)buildOutput();}
+
+shFX.addEventListener('change',save);shTBN.addEventListener('change',save);
+document.getElementById('btnReset').addEventListener('click',()=>{DATA.fx=SEED_FX.map(r=>r.slice());DATA.tbn=SEED_TBN.map(r=>r.slice());shFX.value='17.43%';shTBN.value='19.49%';renderGrid('fx');renderGrid('tbn');save();});
+document.getElementById('btnCSV').addEventListener('click',()=>{let out='Segment,Bank,MVS Brokerage,Discount %,Total Market F,To Other Brokers,MVS Share\n';
+  [['FX',compute(DATA.fx,FX_SLAB)],['TBN',compute(DATA.tbn,TBN_SLAB)]].forEach(([seg,cc])=>cc.forEach(c=>{out+=`${seg},"${c.name}",${c.amt??''},${c.discPct},${c.quant?Math.round(c.F):''},${c.quant?Math.round(c.others):''},${c.quant?(c.share*100).toFixed(2)+'%':''}\n`;}));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='mvs_brokerage_analysis.csv';a.click();});
+
+load();renderGrid('fx');renderGrid('tbn');
+
+// ---------- PDF IMPORT ----------
+if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
+function parsePdfLines(lines){
+  let sect=null,fx=[],tbn=[],sf=null,st=null;
+  const dataRe=/^(.+?)\s+([\d,]+\.\d{2}|N\/?A)\s+([\d.]+)%$/i;
+  const shareRe=/MARKET SHARE:\s*([\d.]+)%/i;
+  for(const line of lines){
+    if(/FOREIGN EXCHANGE/i.test(line)){sect='fx';continue;}
+    if(/TREASURY BOND/i.test(line)){sect='tbn';continue;}
+    const sm=line.match(shareRe); if(sm){if(sect==='fx')sf=sm[1];else if(sect==='tbn')st=sm[1];continue;}
+    const m=line.match(dataRe);
+    if(m&&sect){const name=m[1].trim(); if(/MARKET PARTICIPANT/i.test(name))continue;
+      const amt=/^n\/?a$/i.test(m[2])?null:Number(m[2].replace(/,/g,'')); const disc=Number(m[3]);
+      (sect==='fx'?fx:tbn).push([name,amt,disc]);}
+  }
+  return{fx,tbn,sf,st};
+}
+async function readPdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let lines=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p); const tc=await page.getTextContent();
+    const byY={};
+    tc.items.forEach(it=>{if(!it.str)return;const y=Math.round(it.transform[5]);(byY[y]=byY[y]||[]).push({x:it.transform[4],w:it.width,s:it.str});});
+    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const its=byY[y].sort((a,b)=>a.x-b.x); let out='',pe=null;
+      its.forEach(o=>{if(pe!==null){const g=o.x-pe;if(g>1&&!out.endsWith(' ')&&!o.s.startsWith(' '))out+=' ';}out+=o.s;pe=o.x+o.w;});
+      out=out.replace(/\s+/g,' ').trim(); if(out)lines.push(out);
+    });
+  }
+  return lines;
+}
+const pdfMsg=document.getElementById('pdfMsg');
+document.getElementById('pdfFile').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  if(!window.pdfjsLib){pdfMsg.textContent='PDF library not loaded (needs internet).';return;}
+  pdfMsg.textContent='Reading '+f.name+' …';
+  try{
+    const lines=await readPdf(f);
+    const res=parsePdfLines(lines);
+    if(res.fx.length||res.tbn.length){
+      const ok=confirm('Found '+res.fx.length+' FX row(s) and '+res.tbn.length+' Treasury-bond row(s) in "'+f.name+'".\n\nReplace the current data in the grids with these?\n(You can still edit any cell afterwards.)');
+      if(!ok){pdfMsg.textContent='Import cancelled — existing data kept.';e.target.value='';return;}
+      if(res.fx.length)DATA.fx=res.fx;
+      if(res.tbn.length)DATA.tbn=res.tbn;
+      if(res.sf)shFX.value=res.sf+'%';
+      if(res.st)shTBN.value=res.st+'%';
+      renderGrid('fx');renderGrid('tbn');save();
+      pdfMsg.textContent='✓ Loaded '+res.fx.length+' FX + '+res.tbn.length+' bond rows'+((res.sf||res.st)?' + market share':'')+'. Rows are editable — adjust any cell, then open OUTPUT.';
+    }else{
+      pdfMsg.textContent='Could not find table rows — is this the standard brokerage report?';
+    }
+  }catch(err){pdfMsg.textContent='Error reading PDF: '+err.message;}
+  e.target.value='';
+});
+</script>
+</body>
+</html>
