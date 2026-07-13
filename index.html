@@ -271,12 +271,15 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
         x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}}}});
   }catch(err){console.error('combo chart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function segChart(tFX,tTBN,sFX,sTBN){const id='cSeg';if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
-  charts[id]=new Chart(document.getElementById(id),{data:{labels:['Foreign Exchange','Treasury Bonds'],datasets:[
+  try{
+  charts[id]=new Chart(el,{type:'bar',data:{labels:['Foreign Exchange','Treasury Bonds'],datasets:[
     {label:'MVS',data:[tFX.grossAll,tTBN.grossAll],backgroundColor:GOLD,stack:'s'},
     {label:'Other brokers',data:[fullFX-tFX.grossAll,fullT-tTBN.grossAll],backgroundColor:NAVY,stack:'s'}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'}},
-      scales:{x:{stacked:true,ticks:{callback:v=>Number(v).toLocaleString()}},y:{stacked:true}}}});}
+      scales:{x:{stacked:true,ticks:{callback:v=>Number(v).toLocaleString()}},y:{stacked:true}}}});
+  }catch(err){console.error('segChart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function kpis(tFX,tTBN,sFX,sTBN){const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
   const c=[['FX full market',fmt(fullFX),'to others '+fmt(fullFX-tFX.grossAll)],['FX MVS share (report)',(sFX*100).toFixed(2)+'%','of full FX market'],
     ['T-Bond full market',fmt(fullT),'to others '+fmt(fullT-tTBN.grossAll)],['T-Bond MVS share (report)',(sTBN*100).toFixed(2)+'%','of full T-Bond market'],
@@ -303,10 +306,13 @@ function recordMonth(){
   alert('Saved "'+label+'" to history ('+HIST.length+' months).');
 }
 function mk(id,labels,datasets,axis,stacked){if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const valFmt=axis==='pct'?(v=>(v*100).toFixed(0)+'%'):(v=>Number(v).toLocaleString());
-  charts[id]=new Chart(document.getElementById(id),{data:{labels,datasets},
+  try{
+  charts[id]=new Chart(el,{data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'},datalabels:{display:false}},
-      scales:{x:{stacked:!!stacked,ticks:{font:{size:10}}},y:{stacked:!!stacked,ticks:{font:{size:10},callback:valFmt}}}}});}
+      scales:{x:{stacked:!!stacked,ticks:{font:{size:10}}},y:{stacked:!!stacked,ticks:{font:{size:10},callback:valFmt}}}}});
+  }catch(err){console.error('mk chart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
