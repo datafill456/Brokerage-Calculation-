@@ -1,0 +1,15 @@
+{
+  "name": "MVS Brokerage Model",
+  "short_name": "MVS Brokerage",
+  "description": "MVS Money Brokers — reverse-slab brokerage market analysis (FX & Treasury bonds).",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#eef1f6",
+  "theme_color": "#1F3864",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
