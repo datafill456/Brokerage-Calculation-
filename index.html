@@ -117,6 +117,7 @@
       <label class="sm gold" id="pdfBtn" style="display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:6px;font-weight:700;cursor:pointer;border:1px solid #a8861f;color:#3a2f05">⇪ Import PDF<input type="file" id="pdfFile" accept="application/pdf" style="display:none"></label>
       <button class="sm" id="btnRecord">● Record this month</button>
       <button class="ghost sm" id="btnReset">Reset to June 2026</button>
+      <button class="sm" id="btnClear" style="background:#7a2e2e;border-color:#7a2e2e;color:#fff">✕ Clear all data</button>
       <button class="sm hide" id="btnInstall" style="background:#0a7d54;border-color:#0a7d54">⤓ Install app</button>
       <button class="ghost sm" onclick="showPage('output')">OUTPUT →</button>
       <span id="pdfMsg" class="hint" style="margin:0"></span>
@@ -270,9 +271,8 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
         y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
         x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}}}});
   }catch(err){console.error('combo chart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
-function segChart(tFX,tTBN,sFX,sTBN){const id='cSeg';if(charts[id])charts[id].destroy();
+function segChart(tFX,tTBN,fullFX,fullT){const id='cSeg';if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
-  const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
   try{
   charts[id]=new Chart(el,{type:'bar',data:{labels:['Foreign Exchange','Treasury Bonds'],datasets:[
     {label:'MVS',data:[tFX.grossAll,tTBN.grossAll],backgroundColor:GOLD,stack:'s'},
@@ -280,7 +280,7 @@ function segChart(tFX,tTBN,sFX,sTBN){const id='cSeg';if(charts[id])charts[id].de
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'}},
       scales:{x:{stacked:true,ticks:{callback:v=>Number(v).toLocaleString()}},y:{stacked:true}}}});
   }catch(err){console.error('segChart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
-function kpis(tFX,tTBN,sFX,sTBN){const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossAll/sTBN;
+function kpis(tFX,tTBN,sFX,sTBN,fullFX,fullT){
   const c=[['FX full market',fmt(fullFX),'to others '+fmt(fullFX-tFX.grossAll)],['FX MVS share (report)',(sFX*100).toFixed(2)+'%','of full FX market'],
     ['T-Bond full market',fmt(fullT),'to others '+fmt(fullT-tTBN.grossAll)],['T-Bond MVS share (report)',(sTBN*100).toFixed(2)+'%','of full T-Bond market'],
     ['Combined MVS brokerage',fmt(tFX.grossAll+tTBN.grossAll),'discount given '+fmt(tFX.given+tTBN.given)],['Combined full market',fmt(fullFX+fullT),'to others '+fmt(fullFX+fullT-tFX.grossAll-tTBN.grossAll)]];
@@ -288,7 +288,10 @@ function kpis(tFX,tTBN,sFX,sTBN){const fullFX=tFX.grossAll/sFX,fullT=tTBN.grossA
 function buildOutput(){const sFX=parsePct(shFX.value),sTBN=parsePct(shTBN.value);
   const cFX=compute(DATA.fx,FX_SLAB),cTBN=compute(DATA.tbn,TBN_SLAB);
   const tFX=renderRes('resFX',cFX),tTBN=renderRes('resTBN',cTBN);
-  kpis(tFX,tTBN,sFX,sTBN);segChart(tFX,tTBN,sFX,sTBN);combo('cFXcombo',cFX);combo('cTBNcombo',cTBN);save();}
+  // Compute the full-market figures once here — both the KPI cards and the segment chart
+  // use these exact same numbers, so the chart can never drift out of sync with "FX Full Market".
+  const fullFX=sFX>0?tFX.grossAll/sFX:0, fullT=sTBN>0?tTBN.grossAll/sTBN:0;
+  kpis(tFX,tTBN,sFX,sTBN,fullFX,fullT);segChart(tFX,tTBN,fullFX,fullT);combo('cFXcombo',cFX);combo('cTBNcombo',cTBN);save();}
 
 // ---- history ----
 function defMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
@@ -388,6 +391,11 @@ function showPage(p){const on=id=>document.getElementById(id);
 shFX.addEventListener('change',save);shTBN.addEventListener('change',save);
 document.getElementById('btnRecord').addEventListener('click',recordMonth);
 document.getElementById('btnReset').addEventListener('click',()=>{DATA.fx=SEED_FX.map(r=>r.slice());DATA.tbn=SEED_TBN.map(r=>r.slice());shFX.value='17.43%';shTBN.value='19.49%';renderGrid('fx');renderGrid('tbn');save();});
+document.getElementById('btnClear').addEventListener('click',()=>{
+  if(!confirm('Clear all data you have entered on the INPUT page?\n\nThis empties the Foreign Exchange and Treasury Bonds grids. This cannot be undone (unless you Reset to June 2026 or re-import).'))return;
+  DATA.fx=[['',null,0]];DATA.tbn=[['',null,0]];
+  renderGrid('fx');renderGrid('tbn');save();
+});
 document.getElementById('btnPDF').addEventListener('click',()=>exportPDF(document.getElementById('outCapture'),'MVS_Output.pdf','Market Analysis (June 2026)'));
 document.getElementById('btnHistPDF').addEventListener('click',()=>exportPDF(document.getElementById('histCapture'),'MVS_History.pdf','Cumulative History'));
 document.getElementById('btnHistClear').addEventListener('click',()=>{if(confirm('Clear all recorded months?')){HIST=[];saveHist();renderHistory();}});
