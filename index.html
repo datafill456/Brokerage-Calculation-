@@ -90,10 +90,12 @@
   .kpi .sub{font-size:11px;color:var(--grey)}
   .chart-grid{display:flex;gap:16px;flex-wrap:wrap;margin-top:6px}
   .chart-box{flex:1;min-width:320px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px}
+  .chart-wrap{position:relative;height:260px}
+  .chart-wrap.short{height:190px}
   .chart-box h3{margin:2px 0 8px;font-size:12.5px;color:var(--navy);text-align:center}
   .note{font-size:11.5px;color:var(--grey);font-style:italic;margin-top:8px}
   .hide{display:none}
-  @media(max-width:640px){.chart-box{min-width:100%}}
+  @media(max-width:640px){.chart-box{min-width:100%}.chart-wrap{height:220px}.chart-wrap.short{height:170px}}
 </style>
 </head>
 <body>
@@ -142,7 +144,7 @@
     <h2>Summary <span><button class="gold sm" id="btnPDF">⤓ Export colour PDF</button><button class="ghost sm" id="btnCSV">CSV</button></span></h2>
     <div class="body">
       <div class="kpis" id="kpis"></div>
-      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers — by segment (full market, Rs.)</h3><canvas id="cSeg" height="120"></canvas></div></div>
+      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers — by segment (full market, Rs.)</h3><div class="chart-wrap short"><canvas id="cSeg"></canvas></div></div></div>
       <div class="note">Full market uses reported share (every bank). Per-bank reverse-slab reaches only discount banks.</div>
     </div>
   </div>
@@ -150,14 +152,14 @@
     <h2>Foreign Exchange — per bank (sorted by MVS brokerage)</h2>
     <div class="body">
       <div class="grid-wrap"><table class="res" id="resFX"></table></div>
-      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><canvas id="cFXcombo" height="150"></canvas></div></div>
+      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap"><canvas id="cFXcombo"></canvas></div></div></div>
     </div>
   </div>
   <div class="card">
     <h2>Treasury Bonds — per bank (sorted by MVS brokerage)</h2>
     <div class="body">
       <div class="grid-wrap"><table class="res" id="resTBN"></table></div>
-      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><canvas id="cTBNcombo" height="150"></canvas></div></div>
+      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap"><canvas id="cTBNcombo"></canvas></div></div></div>
     </div>
   </div>
   </div>
@@ -265,7 +267,7 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
         y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
@@ -277,7 +279,7 @@ function segChart(tFX,tTBN,fullFX,fullT){const id='cSeg';if(charts[id])charts[id
   charts[id]=new Chart(el,{type:'bar',data:{labels:['Foreign Exchange','Treasury Bonds'],datasets:[
     {label:'MVS',data:[tFX.grossAll,tTBN.grossAll],backgroundColor:GOLD,stack:'s'},
     {label:'Other brokers',data:[fullFX-tFX.grossAll,fullT-tTBN.grossAll],backgroundColor:NAVY,stack:'s'}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'}},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
       scales:{x:{stacked:true,ticks:{callback:v=>Number(v).toLocaleString()}},y:{stacked:true}}}});
   }catch(err){console.error('segChart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function kpis(tFX,tTBN,sFX,sTBN,fullFX,fullT){
@@ -341,7 +343,7 @@ function historyCombo(id,comp,noteHost){
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
         y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
@@ -355,7 +357,7 @@ function mkShareBars(id,labels,hist){if(charts[id])charts[id].destroy();
       {type:'bar',label:'FX MVS share',data:hist.map(r=>r.fxShare),backgroundColor:GOLD},
       {type:'bar',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),backgroundColor:NAVY}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,
+    options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{
         y:{min:0,ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
@@ -372,7 +374,7 @@ function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
       {type:'line',label:'FX MVS share',data:hist.map(r=>r.fxShare),borderColor:GOLD,backgroundColor:GOLD,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'},
       {type:'line',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),borderColor:NAVY,backgroundColor:NAVY,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{
         y:{position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
@@ -386,10 +388,10 @@ function renderHistory(){
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
   const withoutBankData=HIST.filter(r=>!r.fxRows&&!r.tbnRows).length;
   box.innerHTML=(withoutBankData?`<div class="hint" style="margin-bottom:8px">Note: `+withoutBankData+` recorded month(s) were saved before per-bank tracking was added, so they\'re excluded from the bank charts below. Re-import that month\'s PDF to backfill it.</div>`:'')+
-    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokFX" height="150"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokTBN" height="150"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (trend line)</h3><canvas id="hFullShare" height="150"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><canvas id="hShareBars" height="150"></canvas></div></div>`;
+    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap"><canvas id="hBrokFX"></canvas></div></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap"><canvas id="hBrokTBN"></canvas></div></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (trend line)</h3><div class="chart-wrap short"><canvas id="hFullShare"></canvas></div></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><div class="chart-wrap short"><canvas id="hShareBars"></canvas></div></div></div>`;
   const L=HIST.map(r=>r.label);
   const fxAgg=cumulativeBankCompute(HIST,'fxRows',FX_SLAB);
   const tbnAgg=cumulativeBankCompute(HIST,'tbnRows',TBN_SLAB);
