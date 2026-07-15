@@ -304,32 +304,49 @@ function recordMonth(){
     fxFull:tFX.grossAll/sFX,tbnFull:tTBN.grossAll/sTBN,fxShare:sFX,tbnShare:sTBN,
     fxOthers:tFX.grossAll/sFX-tFX.grossAll,tbnOthers:tTBN.grossAll/sTBN-tTBN.grossAll,
     // Per-bank snapshot — lets History break totals down by bank, not just FX/T-Bond totals.
-    fxRows:DATA.fx.filter(r=>r[0]&&typeof r[1]==='number').map(r=>[r[0],r[1]]),
-    tbnRows:DATA.tbn.filter(r=>r[0]&&typeof r[1]==='number').map(r=>[r[0],r[1]])};
+    // Keep discPct too (not just amt) so the reverse-slab F/others/share can be recomputed per bank later.
+    fxRows:DATA.fx.filter(r=>r[0]&&typeof r[1]==='number').map(r=>[r[0],r[1],r[2]]),
+    tbnRows:DATA.tbn.filter(r=>r[0]&&typeof r[1]==='number').map(r=>[r[0],r[1],r[2]])};
   const i=HIST.findIndex(r=>r.label===label);
   if(i>=0){if(!confirm('A record for "'+label+'" exists. Replace it?'))return;HIST[i]=rec;}else HIST.push(rec);
   HIST.sort((a,b)=>String(a.label).localeCompare(String(b.label)));saveHist();
   alert('Saved "'+label+'" to history ('+HIST.length+' months).');
 }
-function mkBrokShare(id,labels,hist){if(charts[id])charts[id].destroy();
-  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
-  // Sum each bank's brokerage (FX + T-Bond combined) across every recorded month that has per-bank data.
-  const totals={};let missing=0;
+// Sum each bank's amt/F/others (reverse-slab results) across every recorded month for one segment (FX or T-Bond).
+function cumulativeBankCompute(hist,rowsKey,slab){
+  const agg={};let missing=0;
   hist.forEach(r=>{
-    if(!r.fxRows&&!r.tbnRows){missing++;return;}
-    (r.fxRows||[]).forEach(([name,amt])=>{totals[name]=(totals[name]||0)+amt;});
-    (r.tbnRows||[]).forEach(([name,amt])=>{totals[name]=(totals[name]||0)+amt;});
+    const rows=r[rowsKey];
+    if(!rows){missing++;return;}
+    compute(rows,slab).forEach(c=>{
+      const a=agg[c.name]||(agg[c.name]={name:c.name,amt:0,F:0,others:0,quant:false});
+      if(typeof c.amt==='number')a.amt+=c.amt;
+      if(c.quant){a.F+=c.F;a.others+=c.others;a.quant=true;}
+    });
   });
-  const banks=Object.keys(totals).sort((a,b)=>totals[b]-totals[a]);
-  const note=el.parentNode.querySelector('.bank-note');if(note)note.remove();
-  if(missing){el.parentNode.insertAdjacentHTML('beforeend','<div class="hint bank-note" style="margin-top:6px">Note: '+missing+' recorded month(s) were saved before per-bank tracking was added, so they are not included here. Re-record those months to include them.</div>');}
-  if(!banks.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note bank-note">No per-bank data yet — record a new month to see bank totals here.</div>');return;}
+  const out=Object.values(agg).map(a=>({name:a.name,amt:a.amt,others:a.quant?a.others:null,F:a.quant?a.F:null,share:a.quant&&a.F>0?a.amt/a.F:null,quant:a.quant}));
+  return{rows:out,missing};
+}
+function historyCombo(id,comp,noteHost){
+  if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
+  const q=sortDesc(comp).filter(c=>c.quant);
+  const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
+  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
+  if(!q.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No bank-level data yet for this segment — record a month (with a discount %) to see banks here.</div>');return;}
   try{
-  charts[id]=new Chart(el,{
-    data:{labels:banks,datasets:[{type:'bar',label:'Total MVS brokerage (cumulative, Rs.)',data:banks.map(b=>totals[b]),backgroundColor:GOLD}]},
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:true,plugins:{legend:{display:false}},
-      scales:{x:{ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},y:{ticks:{font:{size:9}}}}}});
-  }catch(err){console.error('mkBrokShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
+  charts[id]=new Chart(el,{plugins:dl?[dl]:[],
+    data:{labels:q.map(c=>c.name),datasets:[
+      {type:'bar',label:'MVS',data:q.map(c=>c.amt),backgroundColor:GOLD,stack:'s',yAxisID:'y',datalabels:{display:false}},
+      {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
+      {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
+        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}}}});
+  }catch(err){console.error('historyCombo error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function mkShareBars(id,labels,hist){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   try{
@@ -349,10 +366,16 @@ function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
-  box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Total MVS brokerage by bank (cumulative, to date)</h3><canvas id="hBrok" height="260"></canvas></div></div>
+  const withoutBankData=HIST.filter(r=>!r.fxRows&&!r.tbnRows).length;
+  box.innerHTML=(withoutBankData?`<div class="hint" style="margin-bottom:8px">Note: `+withoutBankData+` recorded month(s) were saved before per-bank tracking was added, so they\'re excluded from the bank charts below. Re-import that month\'s PDF to backfill it.</div>`:'')+
+    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokFX" height="260"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokTBN" height="260"></canvas></div></div>
     <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><canvas id="hShareBars" height="110"></canvas></div></div>`;
   const L=HIST.map(r=>r.label);
-  mkBrokShare('hBrok',L,HIST);
+  const fxAgg=cumulativeBankCompute(HIST,'fxRows',FX_SLAB);
+  const tbnAgg=cumulativeBankCompute(HIST,'tbnRows',TBN_SLAB);
+  historyCombo('hBrokFX',fxAgg.rows);
+  historyCombo('hBrokTBN',tbnAgg.rows);
   mkShareBars('hShareBars',L,HIST);
 }
 
@@ -403,17 +426,21 @@ document.getElementById('pdfFile').addEventListener('change',async e=>{const f=e
   pdfMsg.textContent='Reading '+f.name+' …';
   try{const res=parsePdfLines(await readPdf(f));
     if(res.fx.length||res.tbn.length){
-      if(res.month&&HIST.some(r=>r.label===res.month)){
-        alert('⚠ Error: "'+res.month+'" has already been recorded in History.\n\nThis PDF is for a month that\'s already saved. If you meant to correct that month\'s figures, delete it from History first (Clear history), then re-import and record it again.');
+      const existing=res.month?HIST.find(r=>r.label===res.month):null;
+      const hasBankData=existing&&((existing.fxRows&&existing.fxRows.length)||(existing.tbnRows&&existing.tbnRows.length));
+      if(existing&&hasBankData){
+        alert('⚠ Error: "'+res.month+'" has already been recorded in History (with bank-level detail).\n\nThis PDF is for a month that\'s already saved. If you meant to correct that month\'s figures, delete it from History first (Clear history), then re-import and record it again.');
         pdfMsg.textContent='✗ Import blocked — "'+res.month+'" is already recorded in History.';
         e.target.value='';return;
       }
-      if(!confirm('Found '+res.fx.length+' FX row(s) and '+res.tbn.length+' Treasury-bond row(s) in "'+f.name+'".\n\nReplace the current data? (You can still edit any cell afterwards.)')){pdfMsg.textContent='Import cancelled — data kept.';e.target.value='';return;}
+      if(existing&&!hasBankData){
+        if(!confirm('"'+res.month+'" is already in History, but was saved before per-bank tracking was added (no per-bank detail).\n\nImport this PDF to backfill it with bank-level data? After importing, click "Record this month" again to update that month\'s record.')){pdfMsg.textContent='Import cancelled — backfill skipped.';e.target.value='';return;}
+      } else if(!confirm('Found '+res.fx.length+' FX row(s) and '+res.tbn.length+' Treasury-bond row(s) in "'+f.name+'".\n\nReplace the current data? (You can still edit any cell afterwards.)')){pdfMsg.textContent='Import cancelled — data kept.';e.target.value='';return;}
       if(res.fx.length)DATA.fx=res.fx;if(res.tbn.length)DATA.tbn=res.tbn;
       if(res.sf)shFX.value=res.sf+'%';if(res.st)shTBN.value=res.st+'%';
       if(res.month){PDF_MONTH=res.month;try{localStorage.setItem('mvs3_pdfmonth',PDF_MONTH);}catch(e){}}
       renderGrid('fx');renderGrid('tbn');save();
-      pdfMsg.textContent='✓ Loaded '+res.fx.length+' FX + '+res.tbn.length+' bond rows'+(res.month?' for '+res.month:'')+'. Editable — adjust cells, then OUTPUT. Use “Record this month” to save to history.';
+      pdfMsg.textContent='✓ Loaded '+res.fx.length+' FX + '+res.tbn.length+' bond rows'+(res.month?' for '+res.month:'')+(existing&&!hasBankData?' — click "Record this month" to backfill bank detail into that month.':'. Editable — adjust cells, then OUTPUT. Use “Record this month” to save to history.');
     }else pdfMsg.textContent='Could not find table rows — is this the standard brokerage report?';
   }catch(err){pdfMsg.textContent='Error reading PDF: '+err.message;}
   e.target.value='';});
