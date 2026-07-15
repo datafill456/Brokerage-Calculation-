@@ -92,6 +92,7 @@
   .chart-box{flex:1;min-width:320px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px}
   .chart-wrap{position:relative;height:260px}
   .chart-wrap.short{height:250px}
+  .chart-wrap.tall{height:430px}
   .chart-box h3{margin:2px 0 8px;font-size:12.5px;color:var(--navy);text-align:center}
   .note{font-size:11.5px;color:var(--grey);font-style:italic;margin-top:8px}
   .hide{display:none}
@@ -152,14 +153,14 @@
     <h2>Foreign Exchange — per bank (sorted by MVS brokerage)</h2>
     <div class="body">
       <div class="grid-wrap"><table class="res" id="resFX"></table></div>
-      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap"><canvas id="cFXcombo"></canvas></div></div></div>
+      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap tall"><canvas id="cFXcombo"></canvas></div></div></div>
     </div>
   </div>
   <div class="card">
     <h2>Treasury Bonds — per bank (sorted by MVS brokerage)</h2>
     <div class="body">
       <div class="grid-wrap"><table class="res" id="resTBN"></table></div>
-      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap"><canvas id="cTBNcombo"></canvas></div></div></div>
+      <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS vs other brokers (bars, Rs.) + MVS share % (line) — per bank</h3><div class="chart-wrap tall"><canvas id="cTBNcombo"></canvas></div></div></div>
     </div>
   </div>
   </div>
@@ -388,8 +389,8 @@ function renderHistory(){
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
   const withoutBankData=HIST.filter(r=>!r.fxRows&&!r.tbnRows).length;
   box.innerHTML=(withoutBankData?`<div class="hint" style="margin-bottom:8px">Note: `+withoutBankData+` recorded month(s) were saved before per-bank tracking was added, so they\'re excluded from the bank charts below. Re-import that month\'s PDF to backfill it.</div>`:'')+
-    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap"><canvas id="hBrokFX"></canvas></div></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap"><canvas id="hBrokTBN"></canvas></div></div></div>
+    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap tall"><canvas id="hBrokFX"></canvas></div></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><div class="chart-wrap tall"><canvas id="hBrokTBN"></canvas></div></div></div>
     <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (trend line)</h3><div class="chart-wrap short"><canvas id="hFullShare"></canvas></div></div></div>
     <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><div class="chart-wrap short"><canvas id="hShareBars"></canvas></div></div></div>`;
   const L=HIST.map(r=>r.label);
