@@ -311,16 +311,18 @@ function recordMonth(){
 function mkBrokShare(id,labels,hist){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
-  const lbl=key=>dl?{display:true,align:'center',anchor:'center',color:'#fff',font:{size:9,weight:'bold'},
-    formatter:(v,ctx)=>{const r=hist[ctx.dataIndex];return(r&&r[key]!=null&&v)?(r[key]*100).toFixed(1)+'%':'';}}:{display:false};
+  const totalGross=r=>r.fxGross+r.tbnGross;
+  const totalFull=r=>r.fxFull+r.tbnFull;
+  const totalShareLbl=dl?{display:true,align:'top',anchor:'end',color:'#1F3864',font:{size:10,weight:'bold'},
+    formatter:(v,ctx)=>{const r=hist[ctx.dataIndex];const tf=totalFull(r);return(r&&tf>0)?((totalGross(r)/tf)*100).toFixed(1)+'%':'';}}:{display:false};
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
     data:{labels,datasets:[
-      {type:'bar',label:'FX',data:hist.map(r=>r.fxGross),backgroundColor:GOLD,stack:'s',datalabels:lbl('fxShare')},
-      {type:'bar',label:'T-Bonds',data:hist.map(r=>r.tbnGross),backgroundColor:NAVY,stack:'s',datalabels:lbl('tbnShare')}
+      {type:'bar',label:'Total MVS brokerage',data:hist.map(totalGross),backgroundColor:GOLD,datalabels:totalShareLbl},
+      {type:'bar',label:'Total market',data:hist.map(totalFull),backgroundColor:'#c7d2e0'}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
-      scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,ticks:{font:{size:10},callback:v=>Number(v).toLocaleString()}}}}});
+    options:{responsive:true,maintainAspectRatio:true,layout:{padding:{top:16}},plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString()}}}}});
   }catch(err){console.error('mkBrokShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
@@ -344,8 +346,8 @@ function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
-  box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS brokerage by month (Rs. &amp; % of full market)</h3><canvas id="hBrok" height="110"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month</h3><canvas id="hFullShare" height="110"></canvas></div></div>`;
+  box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Total MVS brokerage vs total market by month (Rs. &amp; combined % share)</h3><canvas id="hBrok" height="110"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (by segment)</h3><canvas id="hFullShare" height="110"></canvas></div></div>`;
   const L=HIST.map(r=>r.label);
   mkBrokShare('hBrok',L,HIST);
   mkFullShare('hFullShare',L,HIST);
