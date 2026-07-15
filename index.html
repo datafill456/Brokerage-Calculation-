@@ -193,12 +193,13 @@ const SEED_TBN=[["BANK OF CEYLON",10000,0],["CAPITAL ALLIANCE",560000,15.77],["C
 ["SAMPATH BANK",554609.59,4.57],["SEYLAN BANK",null,0],["STANDARD CHARTERED BANK",87000,0],
 ["UNION BANK OF COLOMBO",null,0],["WEALTH TRUST SECURITIES",252500,8.57]];
 
-const DATA={fx:[],tbn:[]}; let HIST=[];
+const DATA={fx:[],tbn:[]}; let HIST=[]; let PDF_MONTH=null;
 const shFX=document.getElementById('shFX'),shTBN=document.getElementById('shTBN');
 function load(){let sf,st,sh,hh;
   try{sf=JSON.parse(localStorage.getItem('mvs3_fx'));st=JSON.parse(localStorage.getItem('mvs3_tbn'));sh=JSON.parse(localStorage.getItem('mvs3_sh'));hh=JSON.parse(localStorage.getItem('mvs3_hist'));}catch(e){}
   DATA.fx=sf||SEED_FX.map(r=>r.slice());DATA.tbn=st||SEED_TBN.map(r=>r.slice());
-  if(sh){shFX.value=sh[0];shTBN.value=sh[1];} HIST=hh||[];}
+  if(sh){shFX.value=sh[0];shTBN.value=sh[1];} HIST=hh||[];
+  try{PDF_MONTH=localStorage.getItem('mvs3_pdfmonth')||null;}catch(e){}}
 function save(){try{localStorage.setItem('mvs3_fx',JSON.stringify(DATA.fx));localStorage.setItem('mvs3_tbn',JSON.stringify(DATA.tbn));localStorage.setItem('mvs3_sh',JSON.stringify([shFX.value,shTBN.value]));}catch(e){}}
 function saveHist(){try{localStorage.setItem('mvs3_hist',JSON.stringify(HIST));}catch(e){}}
 
@@ -295,7 +296,7 @@ function buildOutput(){const sFX=parsePct(shFX.value),sTBN=parsePct(shTBN.value)
 // ---- history ----
 function defMonth(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function recordMonth(){
-  const label=prompt('Save current data as which month? (e.g. 2026-06)',defMonth());
+  const label=prompt('Save current data as which month? (e.g. 2026-04)',PDF_MONTH||defMonth());
   if(!label)return;
   const sFX=parsePct(shFX.value),sTBN=parsePct(shTBN.value);
   const tFX=totals(compute(DATA.fx,FX_SLAB)),tTBN=totals(compute(DATA.tbn,TBN_SLAB));
@@ -351,16 +352,19 @@ async function exportPDF(pageEl,filename,title){
 
 // ---- PDF import ----
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
-function parsePdfLines(lines){let sect=null,fx=[],tbn=[],sf=null,st=null;
+function parsePdfLines(lines){let sect=null,fx=[],tbn=[],sf=null,st=null,month=null;
   const dataRe=/^(.+?)\s+([\d,]+\.\d{2}|N\/?A)\s+([\d.]+)%$/i,shareRe=/MARKET SHARE:\s*([\d.]+)%/i;
+  const monthRe=/BROKERAGE RECORDS FOR\s+([A-Z]+)\s+(\d{4})/i;
+  const MONTHS={JANUARY:1,FEBRUARY:2,MARCH:3,APRIL:4,MAY:5,JUNE:6,JULY:7,AUGUST:8,SEPTEMBER:9,OCTOBER:10,NOVEMBER:11,DECEMBER:12};
   for(const line of lines){
+    if(!month){const mm=line.match(monthRe);if(mm){const mn=MONTHS[mm[1].toUpperCase()];if(mn)month=mm[2]+'-'+String(mn).padStart(2,'0');}}
     if(/FOREIGN EXCHANGE/i.test(line)){sect='fx';continue;}
     if(/TREASURY BOND/i.test(line)){sect='tbn';continue;}
     const sm=line.match(shareRe);if(sm){if(sect==='fx')sf=sm[1];else if(sect==='tbn')st=sm[1];continue;}
     const m=line.match(dataRe);
     if(m&&sect){const name=m[1].trim();if(/MARKET PARTICIPANT/i.test(name))continue;
       const amt=/^n\/?a$/i.test(m[2])?null:Number(m[2].replace(/,/g,''));(sect==='fx'?fx:tbn).push([name,amt,Number(m[3])]);}}
-  return{fx,tbn,sf,st};}
+  return{fx,tbn,sf,st,month};}
 async function readPdf(file){const buf=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf}).promise;let lines=[];
   for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p);const tc=await page.getTextContent();const byY={};
     tc.items.forEach(it=>{if(!it.str)return;const yk=Math.round(it.transform[5]);(byY[yk]=byY[yk]||[]).push({x:it.transform[4],w:it.width,s:it.str});});
@@ -377,8 +381,9 @@ document.getElementById('pdfFile').addEventListener('change',async e=>{const f=e
       if(!confirm('Found '+res.fx.length+' FX row(s) and '+res.tbn.length+' Treasury-bond row(s) in "'+f.name+'".\n\nReplace the current data? (You can still edit any cell afterwards.)')){pdfMsg.textContent='Import cancelled — data kept.';e.target.value='';return;}
       if(res.fx.length)DATA.fx=res.fx;if(res.tbn.length)DATA.tbn=res.tbn;
       if(res.sf)shFX.value=res.sf+'%';if(res.st)shTBN.value=res.st+'%';
+      if(res.month){PDF_MONTH=res.month;try{localStorage.setItem('mvs3_pdfmonth',PDF_MONTH);}catch(e){}}
       renderGrid('fx');renderGrid('tbn');save();
-      pdfMsg.textContent='✓ Loaded '+res.fx.length+' FX + '+res.tbn.length+' bond rows. Editable — adjust cells, then OUTPUT. Use “Record this month” to save to history.';
+      pdfMsg.textContent='✓ Loaded '+res.fx.length+' FX + '+res.tbn.length+' bond rows'+(res.month?' for '+res.month:'')+'. Editable — adjust cells, then OUTPUT. Use “Record this month” to save to history.';
     }else pdfMsg.textContent='Could not find table rows — is this the standard brokerage report?';
   }catch(err){pdfMsg.textContent='Error reading PDF: '+err.message;}
   e.target.value='';});
