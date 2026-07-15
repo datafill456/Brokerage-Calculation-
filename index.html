@@ -308,27 +308,47 @@ function recordMonth(){
   HIST.sort((a,b)=>String(a.label).localeCompare(String(b.label)));saveHist();
   alert('Saved "'+label+'" to history ('+HIST.length+' months).');
 }
-function mk(id,labels,datasets,axis,stacked){if(charts[id])charts[id].destroy();
+function mkBrokShare(id,labels,hist){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
-  const valFmt=axis==='pct'?(v=>(v*100).toFixed(0)+'%'):(v=>Number(v).toLocaleString());
+  const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
+  const lbl=key=>dl?{display:true,align:'center',anchor:'center',color:'#fff',font:{size:9,weight:'bold'},
+    formatter:(v,ctx)=>{const r=hist[ctx.dataIndex];return(r&&r[key]!=null&&v)?(r[key]*100).toFixed(1)+'%':'';}}:{display:false};
   try{
-  charts[id]=new Chart(el,{data:{labels,datasets},
-    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top'},datalabels:{display:false}},
-      scales:{x:{stacked:!!stacked,ticks:{font:{size:10}}},y:{stacked:!!stacked,ticks:{font:{size:10},callback:valFmt}}}}});
-  }catch(err){console.error('mk chart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
+  charts[id]=new Chart(el,{plugins:dl?[dl]:[],
+    data:{labels,datasets:[
+      {type:'bar',label:'FX',data:hist.map(r=>r.fxGross),backgroundColor:GOLD,stack:'s',datalabels:lbl('fxShare')},
+      {type:'bar',label:'T-Bonds',data:hist.map(r=>r.tbnGross),backgroundColor:NAVY,stack:'s',datalabels:lbl('tbnShare')}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{x:{stacked:true,ticks:{font:{size:10}}},y:{stacked:true,ticks:{font:{size:10},callback:v=>Number(v).toLocaleString()}}}}});
+  }catch(err){console.error('mkBrokShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
+function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
+  try{
+  charts[id]=new Chart(el,{
+    data:{labels,datasets:[
+      {type:'line',label:'FX full market (Rs.)',data:hist.map(r=>r.fxFull),borderColor:GOLD,backgroundColor:GOLD,tension:.25,yAxisID:'y'},
+      {type:'line',label:'T-Bond full market (Rs.)',data:hist.map(r=>r.tbnFull),borderColor:NAVY,backgroundColor:NAVY,tension:.25,yAxisID:'y'},
+      {type:'line',label:'FX MVS share',data:hist.map(r=>r.fxShare),borderColor:GOLD,backgroundColor:GOLD,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'},
+      {type:'line',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),borderColor:NAVY,backgroundColor:NAVY,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{
+        y:{position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
+        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        x:{ticks:{font:{size:9}}}
+      }}});
+  }catch(err){console.error('mkFullShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
-  box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS brokerage by month (Rs.)</h3><canvas id="hBrok" height="110"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box"><h3>Full market by month (Rs.)</h3><canvas id="hFull" height="150"></canvas></div>
-    <div class="chart-box"><h3>To other brokers by month (Rs.)</h3><canvas id="hOth" height="150"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month</h3><canvas id="hShare" height="110"></canvas></div></div>`;
+  box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS brokerage by month (Rs. &amp; % of full market)</h3><canvas id="hBrok" height="110"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month</h3><canvas id="hFullShare" height="110"></canvas></div></div>`;
   const L=HIST.map(r=>r.label);
-  mk('hBrok',L,[{type:'bar',label:'FX',data:HIST.map(r=>r.fxGross),backgroundColor:GOLD,stack:'s'},{type:'bar',label:'T-Bonds',data:HIST.map(r=>r.tbnGross),backgroundColor:NAVY,stack:'s'}],'rs',true);
-  mk('hFull',L,[{type:'line',label:'FX',data:HIST.map(r=>r.fxFull),borderColor:GOLD,backgroundColor:GOLD,tension:.25},{type:'line',label:'T-Bonds',data:HIST.map(r=>r.tbnFull),borderColor:NAVY,backgroundColor:NAVY,tension:.25}],'rs',false);
-  mk('hOth',L,[{type:'bar',label:'FX',data:HIST.map(r=>r.fxOthers),backgroundColor:GOLD},{type:'bar',label:'T-Bonds',data:HIST.map(r=>r.tbnOthers),backgroundColor:NAVY}],'rs',false);
-  mk('hShare',L,[{type:'line',label:'FX share',data:HIST.map(r=>r.fxShare),borderColor:GOLD,backgroundColor:GOLD,tension:.25},{type:'line',label:'T-Bond share',data:HIST.map(r=>r.tbnShare),borderColor:NAVY,backgroundColor:NAVY,tension:.25}],'pct',false);
+  mkBrokShare('hBrok',L,HIST);
+  mkFullShare('hFullShare',L,HIST);
 }
 
 // ---- PDF export (colour, professional) ----
@@ -378,6 +398,11 @@ document.getElementById('pdfFile').addEventListener('change',async e=>{const f=e
   pdfMsg.textContent='Reading '+f.name+' …';
   try{const res=parsePdfLines(await readPdf(f));
     if(res.fx.length||res.tbn.length){
+      if(res.month&&HIST.some(r=>r.label===res.month)){
+        alert('⚠ Error: "'+res.month+'" has already been recorded in History.\n\nThis PDF is for a month that\'s already saved. If you meant to correct that month\'s figures, delete it from History first (Clear history), then re-import and record it again.');
+        pdfMsg.textContent='✗ Import blocked — "'+res.month+'" is already recorded in History.';
+        e.target.value='';return;
+      }
       if(!confirm('Found '+res.fx.length+' FX row(s) and '+res.tbn.length+' Treasury-bond row(s) in "'+f.name+'".\n\nReplace the current data? (You can still edit any cell afterwards.)')){pdfMsg.textContent='Import cancelled — data kept.';e.target.value='';return;}
       if(res.fx.length)DATA.fx=res.fx;if(res.tbn.length)DATA.tbn=res.tbn;
       if(res.sf)shFX.value=res.sf+'%';if(res.st)shTBN.value=res.st+'%';
