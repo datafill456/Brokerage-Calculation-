@@ -362,20 +362,40 @@ function mkShareBars(id,labels,hist){if(charts[id])charts[id].destroy();
         x:{ticks:{font:{size:9}}}
       }}});
   }catch(err){console.error('mkShareBars error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
+function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
+  try{
+  charts[id]=new Chart(el,{
+    data:{labels,datasets:[
+      {type:'line',label:'FX full market (Rs.)',data:hist.map(r=>r.fxFull),borderColor:GOLD,backgroundColor:GOLD,tension:.25,yAxisID:'y'},
+      {type:'line',label:'T-Bond full market (Rs.)',data:hist.map(r=>r.tbnFull),borderColor:NAVY,backgroundColor:NAVY,tension:.25,yAxisID:'y'},
+      {type:'line',label:'FX MVS share',data:hist.map(r=>r.fxShare),borderColor:GOLD,backgroundColor:GOLD,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'},
+      {type:'line',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),borderColor:NAVY,backgroundColor:NAVY,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
+      scales:{
+        y:{position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
+        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        x:{ticks:{font:{size:9}}}
+      }}});
+  }catch(err){console.error('mkFullShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
   const withoutBankData=HIST.filter(r=>!r.fxRows&&!r.tbnRows).length;
   box.innerHTML=(withoutBankData?`<div class="hint" style="margin-bottom:8px">Note: `+withoutBankData+` recorded month(s) were saved before per-bank tracking was added, so they\'re excluded from the bank charts below. Re-import that month\'s PDF to backfill it.</div>`:'')+
-    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokFX" height="260"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokTBN" height="260"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><canvas id="hShareBars" height="110"></canvas></div></div>`;
+    `<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokFX" height="150"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS vs other brokers by bank (Rs.) + MVS share % — cumulative to date</h3><canvas id="hBrokTBN" height="150"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (trend line)</h3><canvas id="hFullShare" height="150"></canvas></div></div>
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><canvas id="hShareBars" height="150"></canvas></div></div>`;
   const L=HIST.map(r=>r.label);
   const fxAgg=cumulativeBankCompute(HIST,'fxRows',FX_SLAB);
   const tbnAgg=cumulativeBankCompute(HIST,'tbnRows',TBN_SLAB);
   historyCombo('hBrokFX',fxAgg.rows);
   historyCombo('hBrokTBN',tbnAgg.rows);
+  mkFullShare('hFullShare',L,HIST);
   mkShareBars('hShareBars',L,HIST);
 }
 
