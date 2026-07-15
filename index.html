@@ -324,33 +324,33 @@ function mkBrokShare(id,labels,hist){if(charts[id])charts[id].destroy();
     options:{responsive:true,maintainAspectRatio:true,layout:{padding:{top:16}},plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{x:{ticks:{font:{size:10}}},y:{ticks:{font:{size:10},callback:v=>Number(v).toLocaleString()}}}}});
   }catch(err){console.error('mkBrokShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
-function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
+function mkShareBars(id,labels,hist){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
+  const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
+  const pctLbl=dl?{display:true,align:'top',anchor:'end',color:'#333',font:{size:9,weight:'bold'},
+    formatter:v=>(v==null)?'':(v*100).toFixed(1)+'%'}:{display:false};
   try{
-  charts[id]=new Chart(el,{
+  charts[id]=new Chart(el,{plugins:dl?[dl]:[],
     data:{labels,datasets:[
-      {type:'line',label:'FX full market (Rs.)',data:hist.map(r=>r.fxFull),borderColor:GOLD,backgroundColor:GOLD,tension:.25,yAxisID:'y'},
-      {type:'line',label:'T-Bond full market (Rs.)',data:hist.map(r=>r.tbnFull),borderColor:NAVY,backgroundColor:NAVY,tension:.25,yAxisID:'y'},
-      {type:'line',label:'FX MVS share',data:hist.map(r=>r.fxShare),borderColor:GOLD,backgroundColor:GOLD,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'},
-      {type:'line',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),borderColor:NAVY,backgroundColor:NAVY,borderDash:[5,4],pointStyle:'triangle',tension:.25,yAxisID:'y2'}
+      {type:'bar',label:'FX MVS share',data:hist.map(r=>r.fxShare),backgroundColor:GOLD,datalabels:pctLbl},
+      {type:'bar',label:'T-Bond MVS share',data:hist.map(r=>r.tbnShare),backgroundColor:NAVY,datalabels:pctLbl}
     ]},
-    options:{responsive:true,maintainAspectRatio:true,interaction:{mode:'index',intersect:false},
+    options:{responsive:true,maintainAspectRatio:true,layout:{padding:{top:16}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{
-        y:{position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
-        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        y:{min:0,ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
         x:{ticks:{font:{size:9}}}
       }}});
-  }catch(err){console.error('mkFullShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
+  }catch(err){console.error('mkShareBars error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
   if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
   box.innerHTML=`<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Total MVS brokerage vs total market by month (Rs. &amp; combined % share)</h3><canvas id="hBrok" height="110"></canvas></div></div>
-    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>Full market size vs MVS share by month (by segment)</h3><canvas id="hFullShare" height="110"></canvas></div></div>`;
+    <div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>MVS market share by month — FX vs T-Bond (%)</h3><canvas id="hShareBars" height="110"></canvas></div></div>`;
   const L=HIST.map(r=>r.label);
   mkBrokShare('hBrok',L,HIST);
-  mkFullShare('hFullShare',L,HIST);
+  mkShareBars('hShareBars',L,HIST);
 }
 
 // ---- PDF export (colour, professional) ----
