@@ -404,7 +404,21 @@ document.getElementById('btnCSV').addEventListener('click',()=>{let out='Segment
 load();renderGrid('fx');renderGrid('tbn');
 
 // ---- PWA: install app + offline service worker ----
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      // Check for a newer sw.js every time the app loads/comes to foreground.
+      reg.update().catch(()=>{});
+    }).catch(()=>{});
+  });
+  // When a new service worker takes over (i.e. you re-uploaded index.html/sw.js),
+  // reload the page automatically so you see the update without a manual hard refresh.
+  let _swRefreshed=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(_swRefreshed)return; _swRefreshed=true;
+    window.location.reload();
+  });
+}
 let deferredPrompt=null;const btnInstall=document.getElementById('btnInstall');
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;btnInstall.classList.remove('hide');});
 btnInstall.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;btnInstall.classList.add('hide');});
