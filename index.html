@@ -451,11 +451,11 @@ async function exportPDF(pageEl,filename,title){
   const cards=pageEl.querySelectorAll('.card, .chart-box');
   const blocks=pageEl.querySelectorAll('.card').length?pageEl.querySelectorAll('.card'):[pageEl];
   for(const el of blocks){
-    const cv=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    const cv=await html2canvas(el,{scale:3,backgroundColor:'#ffffff',useCORS:true});
     let w=pw-2*M,h=cv.height*(w/cv.width);const maxH=ph-M-58;
     if(h>maxH){const s=maxH/h;h=maxH;w=w*s;}
     if(y+h>ph-M){pdf.addPage();head();y=58;}
-    pdf.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',M,y,w,h);y+=h+12;
+    pdf.addImage(cv.toDataURL('image/png'),'PNG',M,y,w,h);y+=h+12;
   }
   pdf.save(filename);
 }
