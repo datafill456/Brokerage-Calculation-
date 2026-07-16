@@ -260,7 +260,9 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
   const q=sortDesc(comp).filter(c=>c.quant);
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
-  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
+  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},
+    offset:ctx=>ctx.dataIndex%2===0?4:18,
+    formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
     data:{labels:q.map(c=>c.name),datasets:[
@@ -268,7 +270,7 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:28}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
         y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
@@ -335,7 +337,9 @@ function historyCombo(id,comp,noteHost){
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const q=sortDesc(comp).filter(c=>c.quant);
   const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
-  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
+  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},
+    offset:ctx=>ctx.dataIndex%2===0?4:18,
+    formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
   if(!q.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No bank-level data yet for this segment — record a month (with a discount %) to see banks here.</div>');return;}
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
@@ -344,7 +348,7 @@ function historyCombo(id,comp,noteHost){
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:14}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:28}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
         y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
