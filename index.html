@@ -175,6 +175,16 @@
       <div id="histCapture"><div id="histCharts"></div></div>
     </div>
   </div>
+  <div class="card" id="monthViewCard" style="display:none">
+    <h2>View a single month's result</h2>
+    <div class="body">
+      <div class="controls">
+        <div class="ctrl"><label>Month</label><select id="histMonthSelect"></select></div>
+        <button class="sm" id="btnViewMonth">Show result</button>
+      </div>
+      <div id="histMonthDetail" style="margin-top:12px"></div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -260,8 +270,9 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
   const q=sortDesc(comp).filter(c=>c.quant);
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
-  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},
-    offset:ctx=>ctx.dataIndex%2===0?4:18,
+  const maxShare=Math.max(...q.map(c=>c.share||0),0.01);
+  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},clamp:true,clip:false,
+    offset:ctx=>ctx.dataIndex%2===0?4:16,
     formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
@@ -270,10 +281,10 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:28}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:22}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
-        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        y2:{position:'right',min:0,suggestedMax:maxShare*1.45,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
         x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}}}});
   }catch(err){console.error('combo chart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function segChart(tFX,tTBN,fullFX,fullT){const id='cSeg';if(charts[id])charts[id].destroy();
@@ -337,8 +348,9 @@ function historyCombo(id,comp,noteHost){
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
   const q=sortDesc(comp).filter(c=>c.quant);
   const dl=(typeof ChartDataLabels!=='undefined')?ChartDataLabels:null;
-  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},
-    offset:ctx=>ctx.dataIndex%2===0?4:18,
+  const maxShare=Math.max(...q.map(c=>c.share||0),0.01);
+  const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},clamp:true,clip:false,
+    offset:ctx=>ctx.dataIndex%2===0?4:16,
     formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
   if(!q.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No bank-level data yet for this segment — record a month (with a discount %) to see banks here.</div>');return;}
   try{
@@ -348,10 +360,10 @@ function historyCombo(id,comp,noteHost){
       {type:'bar',label:'Other brokers',data:q.map(c=>c.others),backgroundColor:NAVY,stack:'s',yAxisID:'y',datalabels:{display:false}},
       {type:'line',label:'MVS share',data:q.map(c=>c.share),borderColor:'#C0392B',backgroundColor:'#C0392B',borderWidth:2,pointRadius:3,yAxisID:'y2',tension:.25,datalabels:shareDL}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:28}},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},layout:{padding:{top:22}},
       plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:11}}}},
       scales:{y:{stacked:true,position:'left',title:{display:true,text:'Rs.'},ticks:{font:{size:9},callback:v=>Number(v).toLocaleString()}},
-        y2:{position:'right',min:0,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
+        y2:{position:'right',min:0,suggestedMax:maxShare*1.45,grid:{drawOnChartArea:false},title:{display:true,text:'MVS share'},ticks:{font:{size:9},callback:v=>(v*100).toFixed(0)+'%'}},
         x:{stacked:true,ticks:{font:{size:8},maxRotation:90,minRotation:55}}}}});
   }catch(err){console.error('historyCombo error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function mkShareBars(id,labels,hist){if(charts[id])charts[id].destroy();
@@ -389,7 +401,7 @@ function mkFullShare(id,labels,hist){if(charts[id])charts[id].destroy();
   }catch(err){console.error('mkFullShare error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}}
 function renderHistory(){
   const list=document.getElementById('histList'),box=document.getElementById('histCharts');
-  if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';return;}
+  if(HIST.length===0){list.textContent='';box.innerHTML='<div class="note" style="font-size:14px;padding:20px 4px">No months recorded yet. On INPUT, load a month (import PDF or edit), then click “● Record this month”.</div>';document.getElementById('monthViewCard').style.display='none';return;}
   list.textContent='Recorded: '+HIST.map(r=>r.label).join(' · ');
   const withoutBankData=HIST.filter(r=>!r.fxRows&&!r.tbnRows).length;
   box.innerHTML=(withoutBankData?`<div class="hint" style="margin-bottom:8px">Note: `+withoutBankData+` recorded month(s) were saved before per-bank tracking was added, so they\'re excluded from the bank charts below. Re-import that month\'s PDF to backfill it.</div>`:'')+
@@ -404,6 +416,35 @@ function renderHistory(){
   historyCombo('hBrokTBN',tbnAgg.rows);
   mkFullShare('hFullShare',L,HIST);
   mkShareBars('hShareBars',L,HIST);
+  const mvCard=document.getElementById('monthViewCard'),sel=document.getElementById('histMonthSelect');
+  mvCard.style.display='block';
+  sel.innerHTML=HIST.map(r=>`<option value="${r.label}">${r.label}</option>`).join('');
+  sel.value=HIST[HIST.length-1].label;
+  showMonthDetail(sel.value);
+}
+function showMonthDetail(label){
+  const host=document.getElementById('histMonthDetail');
+  const r=HIST.find(x=>x.label===label);
+  if(!r){host.innerHTML='';return;}
+  const fmtN=v=>(typeof v==='number')?Number(v.toFixed(2)).toLocaleString():'—';
+  const pct=v=>(typeof v==='number')?(v*100).toFixed(2)+'%':'—';
+  let h='<div class="chart-grid">';
+  h+=`<div class="chart-box"><h3>Foreign Exchange — ${label}</h3>`+
+     `<div class="hint">MVS brokerage: <b>${fmtN(r.fxGross)}</b> · Full market: <b>${fmtN(r.fxFull)}</b> · Share: <b>${pct(r.fxShare)}</b> · To others: <b>${fmtN(r.fxOthers)}</b></div></div>`;
+  h+=`<div class="chart-box"><h3>Treasury Bonds — ${label}</h3>`+
+     `<div class="hint">MVS brokerage: <b>${fmtN(r.tbnGross)}</b> · Full market: <b>${fmtN(r.tbnFull)}</b> · Share: <b>${pct(r.tbnShare)}</b> · To others: <b>${fmtN(r.tbnOthers)}</b></div></div>`;
+  h+='</div>';
+  const bankTable=(title,rows)=>{
+    if(!rows||!rows.length)return `<div class="hint" style="margin-top:8px">${title}: no per-bank detail saved for this month.</div>`;
+    const sorted=rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
+    let t=`<div style="margin-top:10px"><b>${title} — per bank</b><table class="grid" style="margin-top:4px;width:100%"><tr><th>Bank</th><th>MVS Brokerage (Rs.)</th><th>Discount %</th></tr>`;
+    sorted.forEach(([name,amt,disc])=>{t+=`<tr><td style="padding:5px 8px">${name}</td><td style="padding:5px 8px;text-align:right">${Number(amt).toLocaleString()}</td><td style="padding:5px 8px;text-align:right">${disc!=null?disc+'%':'—'}</td></tr>`;});
+    t+='</table></div>';
+    return t;
+  };
+  h+=bankTable('Foreign Exchange',r.fxRows);
+  h+=bankTable('Treasury Bonds',r.tbnRows);
+  host.innerHTML=h;
 }
 
 // ---- PDF export (colour, professional) ----
@@ -486,6 +527,8 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 document.getElementById('btnPDF').addEventListener('click',()=>exportPDF(document.getElementById('outCapture'),'MVS_Output.pdf','Market Analysis (June 2026)'));
 document.getElementById('btnHistPDF').addEventListener('click',()=>exportPDF(document.getElementById('histCapture'),'MVS_History.pdf','Cumulative History'));
 document.getElementById('btnHistClear').addEventListener('click',()=>{if(confirm('Clear all recorded months?')){HIST=[];saveHist();renderHistory();}});
+document.getElementById('btnViewMonth').addEventListener('click',()=>showMonthDetail(document.getElementById('histMonthSelect').value));
+document.getElementById('histMonthSelect').addEventListener('change',e=>showMonthDetail(e.target.value));
 document.getElementById('btnCSV').addEventListener('click',()=>{let out='Segment,Bank,MVS Brokerage,Discount %,Total Market F,To Other Brokers,MVS Share\n';
   [['FX',compute(DATA.fx,FX_SLAB)],['TBN',compute(DATA.tbn,TBN_SLAB)]].forEach(([seg,cc])=>sortDesc(cc).forEach(c=>{out+=`${seg},"${c.name}",${c.amt??''},${c.discPct},${c.quant?Math.round(c.F):''},${c.quant?Math.round(c.others):''},${c.quant?(c.share*100).toFixed(2)+'%':''}\n`;}));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([out],{type:'text/csv'}));a.download='mvs_brokerage.csv';a.click();});
