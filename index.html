@@ -256,8 +256,8 @@ function compute(rows,slab){return rows.map(([name,amt,discPct])=>{const p=discP
 function totals(comp){let tA=0,tG=0,tN=0,tF=0,tO=0;comp.forEach(c=>{if(typeof c.amt==='number'){tA+=c.amt;tG+=c.given;tN+=c.net;}if(c.quant){tF+=c.F;tO+=c.others;}});return{grossAll:tA,given:tG,net:tN,mktQ:tF,othersQ:tO,shareQ:tF>0?(tF-tO)/tF:null};}
 function sortDesc(comp){return comp.slice().sort((a,b)=>{const av=(typeof a.amt==='number')?a.amt:-1,bv=(typeof b.amt==='number')?b.amt:-1;return bv-av;});}
 
-// ---- results table (no ± band, sorted desc) ----
-function renderRes(elId,comp){const s=sortDesc(comp);
+// ---- results table (no ± band, shown in input order) ----
+function renderRes(elId,comp){const s=comp;
   const heads=['Market Participant','MVS Brokerage','Disc %','Disc Given','Net Brok.','Total Market (F)','To Other Brokers','MVS Share'];
   let h='<thead><tr>'+heads.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';const t=totals(comp);
   s.forEach(c=>{h+=`<tr><td class="name">${c.name||''}</td><td>${fmt(c.amt)}</td><td>${(typeof c.amt==='number')?c.discPct.toFixed(2)+'%':''}</td><td>${fmt(c.given)}</td><td>${fmt(c.net)}</td><td>${c.quant?fmt(c.F):'<span class=blank>—</span>'}</td><td>${c.quant?fmt(c.others):'<span class=blank>—</span>'}</td><td>${c.quant?pct(c.share):'<span class=blank>—</span>'}</td></tr>`;});
@@ -418,16 +418,18 @@ function showMonthDetail(label){
      `<div class="hint">MVS brokerage: <b>${fmtN(r.tbnGross)}</b> · Full market: <b>${fmtN(r.tbnFull)}</b> · Share: <b>${pct(r.tbnShare)}</b> · To others: <b>${fmtN(r.tbnOthers)}</b></div></div>`;
   h+='</div>';
   h+='<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>'+label+' — MVS vs other brokers by segment (Rs.)</h3><div class="chart-wrap short"><canvas id="monthSegChart"></canvas></div></div></div>';
-  const bankTable=(title,rows)=>{
+  const bankTable=(title,rows,slab)=>{
     if(!rows||!rows.length)return `<div class="hint" style="margin-top:8px">${title}: no per-bank detail saved for this month.</div>`;
-    const sorted=rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
-    let t=`<div style="margin-top:10px"><b>${title} — per bank</b><table class="grid" style="margin-top:4px;width:100%"><tr><th>Bank</th><th>MVS Brokerage (Rs.)</th><th>Discount %</th></tr>`;
-    sorted.forEach(([name,amt,disc])=>{t+=`<tr><td style="padding:5px 8px">${name}</td><td style="padding:5px 8px;text-align:right">${Number(amt).toLocaleString()}</td><td style="padding:5px 8px;text-align:right">${disc!=null?disc+'%':'—'}</td></tr>`;});
-    t+='</table></div>';
-    return t;
+    const comp=compute(rows,slab),t=totals(comp);
+    const heads=['Market Participant','MVS Brokerage','Disc %','Disc Given','Net Brok.','Total Market (F)','To Other Brokers','MVS Share'];
+    let out=`<div style="margin-top:10px"><b>${title} — per bank</b><table class="res" style="margin-top:4px;width:100%"><thead><tr>${heads.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
+    comp.forEach(c=>{out+=`<tr><td class="name">${c.name||''}</td><td>${fmt(c.amt)}</td><td>${(typeof c.amt==='number')?c.discPct.toFixed(2)+'%':''}</td><td>${fmt(c.given)}</td><td>${fmt(c.net)}</td><td>${c.quant?fmt(c.F):'<span class=blank>—</span>'}</td><td>${c.quant?fmt(c.others):'<span class=blank>—</span>'}</td><td>${c.quant?pct(c.share):'<span class=blank>—</span>'}</td></tr>`;});
+    out+=`<tr class="total"><td class="name">TOTAL</td><td>${fmt(t.grossAll)}</td><td></td><td>${fmt(t.given)}</td><td>${fmt(t.net)}</td><td>${fmt(t.mktQ)}</td><td>${fmt(t.othersQ)}</td><td>${pct(t.shareQ)}</td></tr>`;
+    out+='</tbody></table></div>';
+    return out;
   };
-  h+=bankTable('Foreign Exchange',r.fxRows);
-  h+=bankTable('Treasury Bonds',r.tbnRows);
+  h+=bankTable('Foreign Exchange',r.fxRows,FX_SLAB);
+  h+=bankTable('Treasury Bonds',r.tbnRows,TBN_SLAB);
   host.innerHTML=h;
   mkMonthSegChart('monthSegChart',r);
 }
