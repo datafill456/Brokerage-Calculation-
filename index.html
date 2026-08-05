@@ -430,8 +430,37 @@ function showMonthDetail(label){
   };
   h+=bankTable('Foreign Exchange',r.fxRows,FX_SLAB);
   h+=bankTable('Treasury Bonds',r.tbnRows,TBN_SLAB);
+  const idx=HIST.findIndex(x=>x.label===label),prev=idx>0?HIST[idx-1]:null;
+  h+='<div class="chart-grid">';
+  h+=`<div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS share by bank: ${prev?prev.label+' vs ':''}${label}</h3>`+
+     (prev?`<div class="chart-wrap tall"><canvas id="monthShareCmpFX"></canvas></div>`:`<div class="hint">No earlier recorded month to compare against.</div>`)+`</div>`;
+  h+=`<div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS share by bank: ${prev?prev.label+' vs ':''}${label}</h3>`+
+     (prev?`<div class="chart-wrap tall"><canvas id="monthShareCmpTBN"></canvas></div>`:`<div class="hint">No earlier recorded month to compare against.</div>`)+`</div>`;
+  h+='</div>';
   host.innerHTML=h;
   mkMonthSegChart('monthSegChart',r);
+  if(prev){
+    mkShareCompareChart('monthShareCmpFX',r.fxRows,prev.fxRows,FX_SLAB,label,prev.label);
+    mkShareCompareChart('monthShareCmpTBN',r.tbnRows,prev.tbnRows,TBN_SLAB,label,prev.label);
+  }
+}
+function mkShareCompareChart(id,currRows,prevRows,slab,currLabel,prevLabel){
+  if(charts[id])charts[id].destroy();
+  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
+  const cur=compute(currRows||[],slab).filter(c=>c.quant),prv=compute(prevRows||[],slab).filter(c=>c.quant);
+  const curMap=Object.fromEntries(cur.map(c=>[c.name,c.share])),prvMap=Object.fromEntries(prv.map(c=>[c.name,c.share]));
+  const names=Array.from(new Set([...Object.keys(curMap),...Object.keys(prvMap)]))
+    .sort((a,b)=>(curMap[a]??-1)-(curMap[b]??-1));
+  if(!names.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No quantifiable per-bank share data for this comparison.</div>');return;}
+  try{
+  charts[id]=new Chart(el,{type:'bar',data:{labels:names,datasets:[
+    {label:prevLabel,data:names.map(n=>prvMap[n]!=null?+(prvMap[n]*100).toFixed(2):null),backgroundColor:'#9AA5B1'},
+    {label:currLabel,data:names.map(n=>curMap[n]!=null?+(curMap[n]*100).toFixed(2):null),backgroundColor:GOLD}
+  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'top'},datalabels:{display:true,align:'end',anchor:'end',color:'#333',font:{size:9,weight:'bold'},
+      formatter:v=>(v==null?'':v.toFixed(1)+'%')}},
+    scales:{x:{ticks:{callback:v=>v+'%'},title:{display:true,text:'MVS share of bank\'s market'}},y:{}}}});
+  }catch(err){console.error('mkShareCompareChart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}
 }
 function mkMonthSegChart(id,r){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
