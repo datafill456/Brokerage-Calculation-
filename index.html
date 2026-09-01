@@ -217,7 +217,7 @@ function save(){try{localStorage.setItem('mvs3_fx',JSON.stringify(DATA.fx));loca
 function saveHist(){try{localStorage.setItem('mvs3_hist',JSON.stringify(HIST));}catch(e){}}
 
 const fmt=n=>(n==null||isNaN(n))?'':Math.round(n).toLocaleString('en-US');
-const pct=(n,d=1)=>(n==null||isNaN(n))?'':(n*100).toFixed(d)+'%';
+const pct=(n,d=2)=>(n==null||isNaN(n))?'':(n*100).toFixed(d)+'%';
 const parsePct=s=>{const v=parseFloat(String(s).replace('%',''));return isNaN(v)?0:v/100;};
 function parseAmt(v){v=String(v).trim().replace(/,/g,'');if(v===''||/^n\/?a$/i.test(v))return null;const n=Number(v);return isNaN(n)?null:n;}
 function parseDisc(v){v=String(v).trim().replace('%','').replace(/,/g,'');if(v==='')return 0;const n=Number(v);return isNaN(n)?0:n;}
