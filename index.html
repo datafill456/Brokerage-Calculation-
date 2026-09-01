@@ -256,8 +256,8 @@ function compute(rows,slab){return rows.map(([name,amt,discPct])=>{const p=discP
 function totals(comp){let tA=0,tG=0,tN=0,tF=0,tO=0;comp.forEach(c=>{if(typeof c.amt==='number'){tA+=c.amt;tG+=c.given;tN+=c.net;}if(c.quant){tF+=c.F;tO+=c.others;}});return{grossAll:tA,given:tG,net:tN,mktQ:tF,othersQ:tO,shareQ:tF>0?(tF-tO)/tF:null};}
 function sortDesc(comp){return comp.slice().sort((a,b)=>{const av=(typeof a.amt==='number')?a.amt:-1,bv=(typeof b.amt==='number')?b.amt:-1;return bv-av;});}
 
-// ---- results table (no ± band, shown in input order) ----
-function renderRes(elId,comp){const s=comp;
+// ---- results table (no ± band, sorted desc) ----
+function renderRes(elId,comp){const s=sortDesc(comp);
   const heads=['Market Participant','MVS Brokerage','Disc %','Disc Given','Net Brok.','Total Market (F)','To Other Brokers','MVS Share'];
   let h='<thead><tr>'+heads.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';const t=totals(comp);
   s.forEach(c=>{h+=`<tr><td class="name">${c.name||''}</td><td>${fmt(c.amt)}</td><td>${(typeof c.amt==='number')?c.discPct.toFixed(2)+'%':''}</td><td>${fmt(c.given)}</td><td>${fmt(c.net)}</td><td>${c.quant?fmt(c.F):'<span class=blank>—</span>'}</td><td>${c.quant?fmt(c.others):'<span class=blank>—</span>'}</td><td>${c.quant?pct(c.share):'<span class=blank>—</span>'}</td></tr>`;});
@@ -273,7 +273,7 @@ function combo(id,comp){if(charts[id])charts[id].destroy();
   const maxShare=Math.max(...q.map(c=>c.share||0),0.01);
   const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},clamp:true,clip:false,
     offset:ctx=>ctx.dataIndex%2===0?4:16,
-    formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
+    formatter:v=>(v*100).toFixed(2)+'%'}:{display:false};
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
     data:{labels:q.map(c=>c.name),datasets:[
@@ -351,7 +351,7 @@ function historyCombo(id,comp,noteHost){
   const maxShare=Math.max(...q.map(c=>c.share||0),0.01);
   const shareDL=dl?{display:true,align:'top',anchor:'end',color:'#C0392B',font:{size:9,weight:'bold'},clamp:true,clip:false,
     offset:ctx=>ctx.dataIndex%2===0?4:16,
-    formatter:v=>(v*100).toFixed(1)+'%'}:{display:false};
+    formatter:v=>(v*100).toFixed(2)+'%'}:{display:false};
   if(!q.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No bank-level data yet for this segment — record a month (with a discount %) to see banks here.</div>');return;}
   try{
   charts[id]=new Chart(el,{plugins:dl?[dl]:[],
@@ -418,49 +418,18 @@ function showMonthDetail(label){
      `<div class="hint">MVS brokerage: <b>${fmtN(r.tbnGross)}</b> · Full market: <b>${fmtN(r.tbnFull)}</b> · Share: <b>${pct(r.tbnShare)}</b> · To others: <b>${fmtN(r.tbnOthers)}</b></div></div>`;
   h+='</div>';
   h+='<div class="chart-grid"><div class="chart-box" style="min-width:100%"><h3>'+label+' — MVS vs other brokers by segment (Rs.)</h3><div class="chart-wrap short"><canvas id="monthSegChart"></canvas></div></div></div>';
-  const bankTable=(title,rows,slab)=>{
+  const bankTable=(title,rows)=>{
     if(!rows||!rows.length)return `<div class="hint" style="margin-top:8px">${title}: no per-bank detail saved for this month.</div>`;
-    const comp=compute(rows,slab),t=totals(comp);
-    const heads=['Market Participant','MVS Brokerage','Disc %','Disc Given','Net Brok.','Total Market (F)','To Other Brokers','MVS Share'];
-    let out=`<div style="margin-top:10px"><b>${title} — per bank</b><table class="res" style="margin-top:4px;width:100%"><thead><tr>${heads.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>`;
-    comp.forEach(c=>{out+=`<tr><td class="name">${c.name||''}</td><td>${fmt(c.amt)}</td><td>${(typeof c.amt==='number')?c.discPct.toFixed(2)+'%':''}</td><td>${fmt(c.given)}</td><td>${fmt(c.net)}</td><td>${c.quant?fmt(c.F):'<span class=blank>—</span>'}</td><td>${c.quant?fmt(c.others):'<span class=blank>—</span>'}</td><td>${c.quant?pct(c.share):'<span class=blank>—</span>'}</td></tr>`;});
-    out+=`<tr class="total"><td class="name">TOTAL</td><td>${fmt(t.grossAll)}</td><td></td><td>${fmt(t.given)}</td><td>${fmt(t.net)}</td><td>${fmt(t.mktQ)}</td><td>${fmt(t.othersQ)}</td><td>${pct(t.shareQ)}</td></tr>`;
-    out+='</tbody></table></div>';
-    return out;
+    const sorted=rows.slice().sort((a,b)=>(b[1]||0)-(a[1]||0));
+    let t=`<div style="margin-top:10px"><b>${title} — per bank</b><table class="grid" style="margin-top:4px;width:100%"><tr><th>Bank</th><th>MVS Brokerage (Rs.)</th><th>Discount %</th></tr>`;
+    sorted.forEach(([name,amt,disc])=>{t+=`<tr><td style="padding:5px 8px">${name}</td><td style="padding:5px 8px;text-align:right">${Number(amt).toLocaleString()}</td><td style="padding:5px 8px;text-align:right">${disc!=null?disc+'%':'—'}</td></tr>`;});
+    t+='</table></div>';
+    return t;
   };
-  h+=bankTable('Foreign Exchange',r.fxRows,FX_SLAB);
-  h+=bankTable('Treasury Bonds',r.tbnRows,TBN_SLAB);
-  const idx=HIST.findIndex(x=>x.label===label),prev=idx>0?HIST[idx-1]:null;
-  h+='<div class="chart-grid">';
-  h+=`<div class="chart-box" style="min-width:100%"><h3>Foreign Exchange — MVS share by bank: ${prev?prev.label+' vs ':''}${label}</h3>`+
-     (prev?`<div class="chart-wrap tall"><canvas id="monthShareCmpFX"></canvas></div>`:`<div class="hint">No earlier recorded month to compare against.</div>`)+`</div>`;
-  h+=`<div class="chart-box" style="min-width:100%"><h3>Treasury Bonds — MVS share by bank: ${prev?prev.label+' vs ':''}${label}</h3>`+
-     (prev?`<div class="chart-wrap tall"><canvas id="monthShareCmpTBN"></canvas></div>`:`<div class="hint">No earlier recorded month to compare against.</div>`)+`</div>`;
-  h+='</div>';
+  h+=bankTable('Foreign Exchange',r.fxRows);
+  h+=bankTable('Treasury Bonds',r.tbnRows);
   host.innerHTML=h;
   mkMonthSegChart('monthSegChart',r);
-  if(prev){
-    mkShareCompareChart('monthShareCmpFX',r.fxRows,prev.fxRows,FX_SLAB,label,prev.label);
-    mkShareCompareChart('monthShareCmpTBN',r.tbnRows,prev.tbnRows,TBN_SLAB,label,prev.label);
-  }
-}
-function mkShareCompareChart(id,currRows,prevRows,slab,currLabel,prevLabel){
-  if(charts[id])charts[id].destroy();
-  const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
-  const cur=compute(currRows||[],slab).filter(c=>c.quant),prv=compute(prevRows||[],slab).filter(c=>c.quant);
-  const curMap=Object.fromEntries(cur.map(c=>[c.name,c.share])),prvMap=Object.fromEntries(prv.map(c=>[c.name,c.share]));
-  const names=Array.from(new Set([...Object.keys(curMap),...Object.keys(prvMap)]))
-    .sort((a,b)=>(curMap[a]??-1)-(curMap[b]??-1));
-  if(!names.length){el.parentNode.insertAdjacentHTML('beforeend','<div class="note">No quantifiable per-bank share data for this comparison.</div>');return;}
-  try{
-  charts[id]=new Chart(el,{type:'bar',data:{labels:names,datasets:[
-    {label:prevLabel,data:names.map(n=>prvMap[n]!=null?+(prvMap[n]*100).toFixed(2):null),backgroundColor:'#9AA5B1'},
-    {label:currLabel,data:names.map(n=>curMap[n]!=null?+(curMap[n]*100).toFixed(2):null),backgroundColor:GOLD}
-  ]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{position:'top'},datalabels:{display:true,align:'end',anchor:'end',color:'#333',font:{size:9,weight:'bold'},
-      formatter:v=>(v==null?'':v.toFixed(1)+'%')}},
-    scales:{x:{ticks:{callback:v=>v+'%'},title:{display:true,text:'MVS share of bank\'s market'}},y:{}}}});
-  }catch(err){console.error('mkShareCompareChart error',err); el.parentNode.insertAdjacentHTML('beforeend','<div class="note">Chart could not render: '+err.message+'</div>');}
 }
 function mkMonthSegChart(id,r){if(charts[id])charts[id].destroy();
   const el=document.getElementById(id); if(!el||typeof Chart==='undefined')return;
@@ -482,11 +451,11 @@ async function exportPDF(pageEl,filename,title){
   const cards=pageEl.querySelectorAll('.card, .chart-box');
   const blocks=pageEl.querySelectorAll('.card').length?pageEl.querySelectorAll('.card'):[pageEl];
   for(const el of blocks){
-    const cv=await html2canvas(el,{scale:3,backgroundColor:'#ffffff',useCORS:true});
+    const cv=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
     let w=pw-2*M,h=cv.height*(w/cv.width);const maxH=ph-M-58;
     if(h>maxH){const s=maxH/h;h=maxH;w=w*s;}
     if(y+h>ph-M){pdf.addPage();head();y=58;}
-    pdf.addImage(cv.toDataURL('image/png'),'PNG',M,y,w,h);y+=h+12;
+    pdf.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',M,y,w,h);y+=h+12;
   }
   pdf.save(filename);
 }
