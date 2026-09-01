@@ -482,7 +482,14 @@ async function exportPDF(pageEl,filename,title){
   const cards=pageEl.querySelectorAll('.card, .chart-box');
   const blocks=pageEl.querySelectorAll('.card').length?pageEl.querySelectorAll('.card'):[pageEl];
   for(const el of blocks){
+    // .grid-wrap uses overflow:auto so wide tables scroll on-screen — but html2canvas only
+    // captures the container's own box, clipping anything beyond it. Temporarily let overflow
+    // show through so the full table renders in the PDF, then restore afterward.
+    const wraps=el.querySelectorAll('.grid-wrap');
+    const prevOverflow=[];
+    wraps.forEach(wr=>{prevOverflow.push(wr.style.overflow);wr.style.overflow='visible';});
     const cv=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    wraps.forEach((wr,i)=>{wr.style.overflow=prevOverflow[i];});
     let w=pw-2*M,h=cv.height*(w/cv.width);const maxH=ph-M-58;
     if(h>maxH){const s=maxH/h;h=maxH;w=w*s;}
     if(y+h>ph-M){pdf.addPage();head();y=58;}
